@@ -74,11 +74,11 @@ def _write_canonical_card(path: Path, *, seed: int = 0) -> None:
 def test_pack_cards_no_hulls_round_trip(tmp_path: Path) -> None:
     cards_root = tmp_path / "cards"
     (cards_root / "Ah").mkdir(parents=True)
-    (cards_root / "6s").mkdir(parents=True)
+    (cards_root / "7s").mkdir(parents=True)
     for i in range(3):
         _write_canonical_card(cards_root / "Ah" / f"{i}.png", seed=i)
     for i in range(2):
-        _write_canonical_card(cards_root / "6s" / f"{i}.png", seed=10 + i)
+        _write_canonical_card(cards_root / "7s" / f"{i}.png", seed=10 + i)
 
     out = tmp_path / "shards"
     shards = pack_cards(
@@ -87,9 +87,9 @@ def test_pack_cards_no_hulls_round_trip(tmp_path: Path) -> None:
     assert len(shards) >= 1
 
     cards = Cards(shards, rng=np.random.default_rng(0))
-    assert set(cards.class_names) == {"Ah", "6s"}
+    assert set(cards.class_names) == {"Ah", "7s"}
     assert cards.counts_by_class["Ah"] == 3
-    assert cards.counts_by_class["6s"] == 2
+    assert cards.counts_by_class["7s"] == 2
     assert len(cards) == 5
 
     sample = cards.sample("Ah")

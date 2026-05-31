@@ -18,7 +18,7 @@ the conversion guide for anyone with legacy artifacts on disk.
 | OpenCV API | 3.x `findContours` signature (`(_, cnts, _)`) | 4.x signature (`(cnts, hierarchy)`) |
 | Image typing | `np.int0`, `np.int` (removed in NumPy 2) | `np.intp`, builtin `int` |
 | Display side effects | `cv2.imshow` baked into `extract_card` | Pure functions; callers display themselves |
-| Deck | 52-card standard | 36-card Baloot (A, K, Q, J, 10, 9, 8, 7, 6 × 4 suits) |
+| Deck | 52-card standard | 32-card Baloot (A, K, Q, J, 10, 9, 8, 7 × 4 suits) |
 | Tests | None | `pytest` suite under `tests/` |
 
 ## Migrating an existing dataset
@@ -90,7 +90,7 @@ backgrounds = Backgrounds(bg_shards, rng=rng)
 cards = Cards(card_shards, rng=rng)
 
 print(f"{len(backgrounds)} backgrounds, {len(cards)} cards across "
-      f"{len(cards.class_names)} classes")  # 36 for a packed Baloot deck
+      f"{len(cards.class_names)} classes")  # 32 for a packed Baloot deck
 
 card = cards.sample("Ah")
 bg = backgrounds.sample(size=720)

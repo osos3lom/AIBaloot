@@ -39,7 +39,7 @@ def _make_fixture_assets(tmp_path: Path) -> tuple[Backgrounds, Cards]:
         cv2.imwrite(str(bg_src / f"{i}.png"), arr)
 
     cards_root = tmp_path / "cards_src"
-    for cls in ("Ah", "6s", "Kd"):
+    for cls in ("Ah", "7s", "Kd"):
         d = cards_root / cls
         d.mkdir(parents=True)
         for i in range(2):

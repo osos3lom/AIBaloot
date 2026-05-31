@@ -17,7 +17,7 @@ The job of `hakim-vision` is to:
 
 ## Status
 
-The original 2018 notebook has been replaced by a typed, tested, containerized Python package built around the 36-card Baloot deck. See [the roadmap](#roadmap) for what's next.
+The original 2018 notebook has been replaced by a typed, tested, containerized Python package built around the 32-card Baloot deck. See [the roadmap](#roadmap) for what's next.
 
 | Surface | State |
 |---|---|
@@ -27,7 +27,7 @@ The original 2018 notebook has been replaced by a typed, tested, containerized P
 | Multi-stage Dockerfile, non-root runtime | ✅ |
 | Notebook → `src/hakim_vision/` modules | ✅ |
 | Pickle → tar shards | ✅ |
-| 36-card Baloot deck across package + tester notebook | ✅ |
+| 32-card Baloot deck across package + tester notebook | ✅ |
 | YOLO11 / RT-DETRv2 + ONNX/CoreML/TFLite export | ⏳ planned |
 | Gradio demo on Hugging Face Spaces | ⏳ planned |
 
@@ -67,7 +67,7 @@ docker run --rm hakim-vision hakim-vision version
 │   └── synthetic/            # Scene generation, asset loaders, augmentation
 ├── tests/                    # pytest suite
 ├── baloot_dataset_tester_workflow.ipynb   # tester smoke-test for the Baloot pipeline
-├── data/cards.names          # 36 Baloot card-class names (Ah, 6s, …)
+├── data/cards.names          # 32 Baloot card-class names (Ah, 7s, …)
 ├── Dockerfile                # multi-stage, non-root
 └── .github/workflows/ci.yml  # CI
 ```
