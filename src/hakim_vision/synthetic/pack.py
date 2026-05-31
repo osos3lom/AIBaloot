@@ -1,14 +1,11 @@
-"""Pack on-disk asset directories into WebDataset tar shards.
-
-Replaces the legacy pickle artifacts (`backgrounds.pck`, `cards.pck`):
+"""Pack on-disk asset directories into tar shards loadable by `Backgrounds` / `Cards`.
 
 - `pack_backgrounds(...)` walks a directory of texture images (e.g. an
   unpacked Describable Textures Dataset) and writes one or more
   `backgrounds-{NNN}.tar` shards.
 - `pack_cards(...)` walks a directory laid out as `{root}/{card_name}/*.png`
-  (the output of the legacy `extract_cards_from_video` step) and writes
-  `cards-{NNN}.tar` shards. Corner hulls can be supplied via a sidecar
-  `hulls.npz` map; if absent the hulls are extracted live with
+  and writes `cards-{NNN}.tar` shards. Corner hulls can be supplied via a
+  sidecar `hulls.npz` map; if absent the hulls are extracted live with
   `find_corner_hull`.
 """
 

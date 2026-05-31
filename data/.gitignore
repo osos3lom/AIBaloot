@@ -1,6 +1,4 @@
-backgrounds.pck
-cards/
-cards.pck
-scenes/
-val.txt
-video/
+# Ignore all data artifacts; only the deck-class manifest is checked in.
+*
+!.gitignore
+!cards.names

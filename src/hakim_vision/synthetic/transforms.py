@@ -1,10 +1,9 @@
 """Per-card affine augmentation, OpenCV-only.
 
-The legacy notebook applied imgaug pipelines to BGRA card layers and their
-imgaug ``KeypointsOnImage`` companions. We replicate the same effect with
-``cv2.warpAffine`` and plain numpy point arrays — no imgaug dependency, fully
-deterministic given an injected RNG, and easy to swap for ``albumentations``
-later when we want photometric/elastic effects.
+Applies a uniform random affine (rotation, scale, translation) to a BGRA card
+layer and its corner-hull keypoints using ``cv2.warpAffine`` plus plain numpy
+point arrays. Fully deterministic given an injected RNG. Photometric / elastic
+effects can be layered on top in a follow-up.
 """
 
 from __future__ import annotations

@@ -102,7 +102,7 @@ def cmd_pack_backgrounds(
     shard_size: int = typer.Option(1024, "--shard-size", min=1),
     prefix: str = typer.Option("backgrounds", "--prefix"),
 ) -> None:
-    """Pack background textures into WebDataset shards (replaces backgrounds.pck)."""
+    """Pack background textures into tar shards loadable by `Backgrounds`."""
     shards = pack_backgrounds(
         images_dir, output_dir, shard_size=shard_size, shard_prefix=prefix
     )
@@ -121,7 +121,7 @@ def cmd_pack_cards(
         help="Skip live corner-hull extraction (use reference rectangles instead).",
     ),
 ) -> None:
-    """Pack extracted card images into WebDataset shards (replaces cards.pck)."""
+    """Pack extracted card images into tar shards loadable by `Cards`."""
     shards = pack_cards(
         cards_root,
         output_dir,

@@ -32,9 +32,9 @@ We will credit reporters in the release notes unless they ask otherwise.
 
 ## Known sensitive areas
 
-- **Pickle loading.** The legacy notebook reads `data/backgrounds.pck` and `data/cards.pck` via `pickle.load`. Never load `.pck` files from untrusted sources. This is being migrated to `webdataset` shards; until that lands, treat pickle artifacts as code execution.
-- **Runtime `wget`.** The legacy notebook downloads `dtd-r1.0.1.tar.gz` over plain HTTP. There is no checksum verification yet. Do not run the notebook on a shared/untrusted network until this is fixed.
-- **External XML parsing.** `convert_voc_yolo.py` parses arbitrary VOC XML with the stdlib `ElementTree`. It is not hardened against XXE; only run it against XML you produced.
+- **Tar shard extraction.** `hakim_vision.synthetic.assets` reads `cards-*.tar` and `backgrounds-*.tar` with the stdlib `tarfile`. Open these only on shards you produced or trust. Do not feed shards from untrusted sources without first inspecting member paths for traversal (`../`).
+- **OpenCV image decoding.** `cv2.imdecode` is used to decode card and background images from shard payloads. Malformed images may trigger CVEs in the bundled OpenCV; keep the `opencv-python` pin current.
+- **Asset extras (development).** The `notebooks` optional-deps group pulls `jupyter`/`matplotlib` for the tester smoke-test notebook. Do not install in CI containers that don't need them.
 
 ## Out of scope
 

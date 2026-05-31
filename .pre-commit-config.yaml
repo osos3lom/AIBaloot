@@ -27,7 +27,6 @@ repos:
       - id: mypy
         additional_dependencies:
           - pydantic>=2.8
-          - types-tqdm
         args: ["--config-file=pyproject.toml"]
         pass_filenames: false
         files: ^src/

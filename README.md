@@ -17,17 +17,18 @@ The job of `hakim-vision` is to:
 
 ## Status
 
-We are mid-modernization from the original 2018 notebook into a typed, tested, containerized Python package. See [the roadmap](#roadmap) for what's done and what's next.
+The original 2018 notebook has been replaced by a typed, tested, containerized Python package built around the 36-card Baloot deck. See [the roadmap](#roadmap) for what's next.
 
 | Surface | State |
 |---|---|
 | Modern Python toolchain (`uv`, `ruff`, `mypy --strict`, `pytest`) | ✅ |
-| Pinned, modern deps (OpenCV 4.10, NumPy 2, Albumentations, drop `imgaug`) | ✅ |
+| Pinned, modern deps (OpenCV 4.10, NumPy 2; dropped `imgaug`) | ✅ |
 | CI: lint / type-check / test (Linux + macOS + Windows) / Docker | ✅ |
 | Multi-stage Dockerfile, non-root runtime | ✅ |
-| Notebook → `src/hakim_vision/` modules | 🚧 in progress |
-| Pickle → WebDataset shards | ⏳ planned |
-| YOLOv3 → YOLO11 / RT-DETRv2 + ONNX/CoreML/TFLite export | ⏳ planned |
+| Notebook → `src/hakim_vision/` modules | ✅ |
+| Pickle → tar shards | ✅ |
+| 36-card Baloot deck across package + tester notebook | ✅ |
+| YOLO11 / RT-DETRv2 + ONNX/CoreML/TFLite export | ⏳ planned |
 | Gradio demo on Hugging Face Spaces | ⏳ planned |
 
 ## Quick start
@@ -63,16 +64,13 @@ docker run --rm hakim-vision hakim-vision version
 │   ├── cli.py                # `hakim-vision` CLI (typer)
 │   ├── config.py             # Pydantic settings (HAKIM_VISION_* env vars)
 │   ├── geometry.py           # YOLO/VOC box conversion
-│   └── synthetic/            # Scene generation (porting from notebook)
-├── tests/                    # pytest + hypothesis
+│   └── synthetic/            # Scene generation, asset loaders, augmentation
+├── tests/                    # pytest suite
 ├── baloot_dataset_tester_workflow.ipynb   # tester smoke-test for the Baloot pipeline
-├── convert_voc_yolo.py       # legacy script (still works; replacement WIP)
 ├── data/cards.names          # 36 Baloot card-class names (Ah, 6s, …)
 ├── Dockerfile                # multi-stage, non-root
 └── .github/workflows/ci.yml  # CI
 ```
-
-The legacy notebook is intentionally kept until every cell has been ported into a tested module. Don't add new code to it — see [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## About Hakim
 

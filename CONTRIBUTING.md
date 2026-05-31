@@ -25,10 +25,10 @@ uv run mypy
 
 ## Ground rules
 
-1. **No new code in notebooks.** Notebooks are for exploration only and live in `notebooks/`. Anything that needs to be tested, reviewed, or shipped goes in `src/hakim_vision/`.
+1. **No domain logic in notebooks.** The only notebook in this repo is `baloot_dataset_tester_workflow.ipynb` — a thin smoke test that imports from `hakim_vision`. New logic, fixes, and abstractions all go in `src/hakim_vision/`.
 2. **Type everything.** `mypy --strict` is the floor; PRs that loosen it need justification in the description.
 3. **Test what you ship.** A PR that adds behavior without a test will not be merged unless the behavior is genuinely untestable (e.g., a one-off migration script).
-4. **No `pickle` on disk.** Use `webdataset`, `parquet`, `npz`, or `safetensors`. Pickle is an RCE risk on any shared artifact.
+4. **No `pickle` on disk.** Use plain tar shards (the existing `pack-backgrounds` / `pack-cards` format), `parquet`, `npz`, or `safetensors`. Pickle is an RCE risk on any shared artifact.
 5. **No secrets in commits.** Gitleaks runs in CI; the pre-commit hook will catch most cases.
 
 ## Branching & commits
@@ -39,17 +39,16 @@ uv run mypy
 
 ## What we welcome
 
-- Replacing the legacy notebook flow with modular functions in `src/hakim_vision/`.
-- Migrating augmentation from `imgaug` (unmaintained) to `albumentations`.
-- Replacing pickle artifacts with `webdataset` shards.
-- Modernizing the detector (YOLOv3 → YOLO11 / RT-DETRv2) and adding ONNX/CoreML/TFLite export.
+- Photometric and elastic augmentation (e.g. via `albumentations`) layered on top of the existing `random_affine_card` pipeline.
+- Video → card-image extraction CLI (`extract-cards`) to replace the legacy notebook capture flow.
+- Modernizing the detector (YOLO11 / RT-DETRv2) and adding ONNX/CoreML/TFLite export.
 - Auto-labeling pipelines using Grounding DINO + SAM 2 to bootstrap real-world data.
 - Synthetic scene generation via Kubric (Blender) for photorealistic training data.
 - Bug reports with reproducible failing tests.
 
 ## What we do not want
 
-- New notebooks added to `src/`.
+- New notebooks added to the repo. The single tester notebook is the exception.
 - Loosening typing or test coverage without discussion.
 - Dependencies on closed-source SaaS where an OSS equivalent exists.
 - Code copied from any closed-source Baloot app — clean-room only.

@@ -1,8 +1,7 @@
 """Synthetic playing-card scene generation pipeline.
 
-Ported from the legacy `creating_playing_cards_dataset.ipynb` notebook into
-typed, testable modules. Modules are extracted incrementally; see the project
-roadmap for the order of work.
+Typed, testable modules covering card extraction, corner-hull detection,
+random-affine augmentation, and 2-/3-card scene composition with YOLO labels.
 """
 
 from hakim_vision.synthetic.assets import Backgrounds, CardSample, Cards

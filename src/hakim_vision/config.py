@@ -24,13 +24,13 @@ class GenerationConfig(BaseSettings):
 
     # Paths
     data_dir: Path = Field(default=Path("data"), description="Root data directory.")
-    cards_archive: Path = Field(
-        default=Path("data/cards.tar"),
-        description="WebDataset shard of source card images.",
+    cards_dir: Path = Field(
+        default=Path("data/shards/cards"),
+        description="Directory of cards-*.tar shards.",
     )
-    backgrounds_archive: Path = Field(
-        default=Path("data/backgrounds.tar"),
-        description="WebDataset shard of background textures.",
+    backgrounds_dir: Path = Field(
+        default=Path("data/shards/backgrounds"),
+        description="Directory of backgrounds-*.tar shards.",
     )
     output_dir: Path = Field(default=Path("data/scenes"), description="Generated scenes.")
 
@@ -48,9 +48,10 @@ class GenerationConfig(BaseSettings):
         description="Reject augmented boxes whose aspect ratio exceeds this value.",
     )
 
-    # Scene composition.
-    cards_per_scene_min: int = Field(default=2, ge=1, le=4)
-    cards_per_scene_max: int = Field(default=3, ge=1, le=4)
+    # Scene composition. The renderer only supports 2- or 3-card scenes today;
+    # widen these bounds at the same time as `render_random_scene`.
+    cards_per_scene_min: int = Field(default=2, ge=2, le=3)
+    cards_per_scene_max: int = Field(default=3, ge=2, le=3)
 
     # Reproducibility.
     seed: int = Field(default=42, description="Global RNG seed.")

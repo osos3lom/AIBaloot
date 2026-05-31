@@ -1,5 +1,4 @@
-# Legacy
-dtd-r1.0.1.tar.gz
+# Notebooks
 .ipynb_checkpoints/
 
 # Python
@@ -40,9 +39,10 @@ data/cards/
 data/scenes/
 data/video/
 data/val.txt
-data/*.pck
+data/shards/
 data/*.tar
-dtd/
+data/cards_src/
+data/backgrounds_src/
 
 # Model artifacts
 *.pt

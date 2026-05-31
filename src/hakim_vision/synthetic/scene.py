@@ -1,10 +1,9 @@
 """Scene compositor: place 2 or 3 cards on a background, emit YOLO labels.
 
-This is a deliberately cleaner port of the legacy ``Scene`` class:
+Design notes:
 
-* No ``imgaug``. Augmentation is a single OpenCV affine via
-  ``random_affine_card``; richer photometric/elastic effects can be layered on
-  later via ``albumentations``.
+* Augmentation is a single OpenCV affine via ``random_affine_card``; richer
+  photometric/elastic effects can be layered on top later.
 * No global RNG. The caller injects ``numpy.random.Generator``.
 * Occlusion handling is explicit: a placed card's corner-symbol hull is kept
   only if the **next** card (which renders on top) does not occlude more than

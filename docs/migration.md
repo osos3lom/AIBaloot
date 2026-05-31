@@ -2,23 +2,24 @@
 
 The original repository was a single Jupyter notebook
 (`creating_playing_cards_dataset.ipynb`) that loaded pickled asset bundles and
-serialized generated scenes to a working directory. `hakim-vision` keeps the
-inputs and outputs **conceptually** the same, but the artifact format and the
-API are different. This page is the conversion guide.
+serialized generated scenes to a working directory. That notebook has been
+removed; the entire pipeline now lives in `src/hakim_vision/`. This page is
+the conversion guide for anyone with legacy artifacts on disk.
 
 ## What changed
 
 | Concern | Legacy (2018 notebook) | Modern (`hakim-vision`) |
 |---|---|---|
-| Asset format | `data/backgrounds.pck`, `data/cards.pck` (pickle) | WebDataset tar shards (`backgrounds-NNNN.tar`, `cards-NNNN.tar`) |
+| Asset format | `data/backgrounds.pck`, `data/cards.pck` (pickle) | Plain tar shards (`backgrounds-NNNN.tar`, `cards-NNNN.tar`) loaded via stdlib `tarfile` |
 | Background source | Runtime `!wget` of DTD | Pre-packed shards (offline or HF Hub cached) |
-| API surface | Globals + cells | `hakim_vision.synthetic.{Backgrounds, Cards, extract_card, …}` |
+| API surface | Globals + cells | `hakim_vision.synthetic.{Backgrounds, Cards, extract_card, render_random_scene, …}` |
 | Randomness | `random.random`, `random.randint` (global state) | `numpy.random.Generator` injected per loader |
-| Augmentation | `imgaug` (unmaintained since 2020) | `albumentations` (planned) |
+| Augmentation | `imgaug` (unmaintained since 2020) | OpenCV affine via `random_affine_card`; photometric/elastic layers can be added with `albumentations` later |
 | OpenCV API | 3.x `findContours` signature (`(_, cnts, _)`) | 4.x signature (`(cnts, hierarchy)`) |
 | Image typing | `np.int0`, `np.int` (removed in NumPy 2) | `np.intp`, builtin `int` |
 | Display side effects | `cv2.imshow` baked into `extract_card` | Pure functions; callers display themselves |
-| Tests | None | `pytest` (12+ tests, OpenCV-on-synthetic data) |
+| Deck | 52-card standard | 36-card Baloot (A, K, Q, J, 10, 9, 8, 7, 6 × 4 suits) |
+| Tests | None | `pytest` suite under `tests/` |
 
 ## Migrating an existing dataset
 
@@ -89,7 +90,7 @@ backgrounds = Backgrounds(bg_shards, rng=rng)
 cards = Cards(card_shards, rng=rng)
 
 print(f"{len(backgrounds)} backgrounds, {len(cards)} cards across "
-      f"{len(cards.class_names)} classes")
+      f"{len(cards.class_names)} classes")  # 36 for a packed Baloot deck
 
 card = cards.sample("Ah")
 bg = backgrounds.sample(size=720)
@@ -97,12 +98,11 @@ bg = backgrounds.sample(size=720)
 
 ## What's still missing (roadmap)
 
-- `extract-cards` CLI to replace `extract_cards_from_video`.
-- `Scene` compositor port (currently the legacy notebook still owns scene
-  composition; the new package exposes the asset and geometry primitives a
-  port will need).
+- `extract-cards` CLI to replace the notebook's video-frame capture loop.
 - HF Datasets-cached DTD release so users don't need to source backgrounds
   themselves.
+- Photometric/elastic augmentation pass (`albumentations`) on top of the
+  current affine pipeline.
 - Modern detector training (YOLO11 / RT-DETRv2) on the new shards.
 
 See [the project plan](https://github.com/osos3lom/AIBaloot) for the full
