@@ -1,0 +1,27 @@
+name: Feature request
+description: Propose a new capability or improvement.
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Concrete user / developer pain, not a solution shopping list.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed approach
+      description: How would you build it? Tradeoffs welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Out-of-scope items, follow-up work, dependencies.

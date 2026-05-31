@@ -1,2 +1,58 @@
+# Legacy
 dtd-r1.0.1.tar.gz
 .ipynb_checkpoints/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+*.so
+
+# Virtualenvs
+.venv/
+venv/
+env/
+.python-version
+
+# uv
+.uv-cache/
+
+# Tooling caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Data artifacts
+data/cards/
+data/scenes/
+data/video/
+data/val.txt
+data/*.pck
+data/*.tar
+dtd/
+
+# Model artifacts
+*.pt
+*.pth
+*.onnx
+*.safetensors
+*.tflite
+*.mlmodel
+
+# Secrets
+.env
+.env.*
+!.env.example
