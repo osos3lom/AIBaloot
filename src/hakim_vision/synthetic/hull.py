@@ -50,7 +50,7 @@ def find_corner_hull(
 
     Args:
         card_image: BGR uint8 image of a card warped to the reference canvas.
-        corner: 4×2 float32 array delimiting the rectangular corner zone
+        corner: 4x2 float32 array delimiting the rectangular corner zone
             (`REF_CORNER_HL` for the top-left, `REF_CORNER_LR` for the
             bottom-right corner).
         min_contour_area: Reject small noise contours below this area.
@@ -88,7 +88,8 @@ def find_corner_hull(
         return None
 
     concat: NDArray[np.intp] | None = None
-    for c in contours:
+    for contour in contours:
+        c = contour.astype(np.intp, copy=False)
         area = float(cv2.contourArea(c))
         hull = cv2.convexHull(c)
         hull_area = float(cv2.contourArea(hull))
@@ -103,8 +104,7 @@ def find_corner_hull(
         cy = moments["m01"] / moments["m00"]
 
         center_ok = (
-            abs(w / 2 - cx) < w * center_x_tolerance
-            and abs(h / 2 - cy) < h * center_y_tolerance
+            abs(w / 2 - cx) < w * center_x_tolerance and abs(h / 2 - cy) < h * center_y_tolerance
         )
         if area >= min_contour_area and solidity > min_solidity and center_ok:
             concat = c if concat is None else np.concatenate((concat, c))
@@ -139,9 +139,7 @@ def hull_to_points(
 def points_to_polygon(points: NDArray[np.float32]) -> Polygon:
     """Convert an `(N, 2)` point array to a `shapely` polygon."""
     if points.ndim != 2 or points.shape[1] != 2 or points.shape[0] < 3:
-        raise ValueError(
-            f"need (N, 2) with N >= 3 to form a polygon, got shape {points.shape}"
-        )
+        raise ValueError(f"need (N, 2) with N >= 3 to form a polygon, got shape {points.shape}")
     return Polygon(points.tolist())
 
 

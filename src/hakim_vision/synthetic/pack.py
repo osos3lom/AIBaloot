@@ -114,7 +114,7 @@ def pack_cards(
 
     Expects ``cards_root/{card_name}/*.png`` (the layout produced by the
     legacy ``extract_cards_from_video`` step). Each image must already be a
-    canonical-size BGRA card (``CARD_HEIGHT × CARD_WIDTH``); non-conforming
+    canonical-size BGRA card (``CARD_HEIGHT x CARD_WIDTH``); non-conforming
     images are silently skipped.
 
     If ``extract_hulls`` is True, runs ``find_corner_hull`` for the two
@@ -149,7 +149,7 @@ def pack_cards(
                     image = cv2.cvtColor(image, cv2.COLOR_BGR2BGRA)
 
                 if extract_hulls:
-                    rgb = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+                    rgb = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR).astype(np.uint8, copy=False)
                     hl = find_corner_hull(rgb, REF_CORNER_HL)
                     lr = find_corner_hull(rgb, REF_CORNER_LR)
                     if hl is None or lr is None or not (hl.ok and lr.ok):

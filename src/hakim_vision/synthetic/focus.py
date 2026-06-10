@@ -15,7 +15,7 @@ def variance_of_laplacian(image: NDArray[np.uint8]) -> float:
     """Return the variance of the Laplacian of `image` as a focus measure.
 
     Higher values indicate a sharper image; lower values indicate blur. A common
-    cutoff for "in focus" is around 100–150 for typical webcam frames, but the
+    cutoff for "in focus" is around 100-150 for typical webcam frames, but the
     right threshold is dataset-dependent. The legacy notebook used 120.
 
     Args:
@@ -28,7 +28,9 @@ def variance_of_laplacian(image: NDArray[np.uint8]) -> float:
         ValueError: if `image` is not a 2-D or 3-D NumPy array.
     """
     if not isinstance(image, np.ndarray) or image.ndim not in (2, 3):
-        raise ValueError(f"image must be a 2-D or 3-D ndarray, got ndim={getattr(image, 'ndim', None)}")
+        raise ValueError(
+            f"image must be a 2-D or 3-D ndarray, got ndim={getattr(image, 'ndim', None)}"
+        )
     return float(cv2.Laplacian(image, cv2.CV_64F).var())
 
 

@@ -93,11 +93,12 @@ def _decode_image(data: bytes) -> NDArray[np.uint8]:
     img = cv2.imdecode(arr, cv2.IMREAD_UNCHANGED)
     if img is None:
         raise ValueError("failed to decode image payload")
-    return img
+    return img.astype(np.uint8, copy=False)
 
 
 def _decode_npy(data: bytes) -> NDArray[np.intp]:
-    return np.load(io.BytesIO(data)).astype(np.intp)
+    arr: NDArray[np.intp] = np.load(io.BytesIO(data)).astype(np.intp)
+    return arr
 
 
 class Backgrounds:
@@ -136,10 +137,12 @@ class Backgrounds:
         idx = int(self._rng.integers(0, len(self._images)))
         bg = self._images[idx]
         if bg.ndim == 2:
-            bg = cv2.cvtColor(bg, cv2.COLOR_GRAY2BGR)
+            bg = cv2.cvtColor(bg, cv2.COLOR_GRAY2BGR).astype(np.uint8, copy=False)
         elif bg.shape[2] == 4:
-            bg = cv2.cvtColor(bg, cv2.COLOR_BGRA2BGR)
-        return cv2.resize(bg, (size, size), interpolation=cv2.INTER_AREA)
+            bg = cv2.cvtColor(bg, cv2.COLOR_BGRA2BGR).astype(np.uint8, copy=False)
+        return cv2.resize(bg, (size, size), interpolation=cv2.INTER_AREA).astype(
+            np.uint8, copy=False
+        )
 
 
 class Cards:

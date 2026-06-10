@@ -61,12 +61,11 @@ def _make_fixture_assets(tmp_path: Path) -> tuple[Backgrounds, Cards]:
 # random_affine_card
 # ---------------------------------------------------------------------------
 
+
 def test_random_affine_card_shapes() -> None:
     rng = np.random.default_rng(0)
     card = np.full((CARD_HEIGHT, CARD_WIDTH, 4), 255, dtype=np.uint8)
-    placed = random_affine_card(
-        card, REF_CORNER_HL, REF_CORNER_LR, rng=rng, canvas_size=512
-    )
+    placed = random_affine_card(card, REF_CORNER_HL, REF_CORNER_LR, rng=rng, canvas_size=512)
     assert placed.image.shape == (512, 512, 4)
     assert placed.card_corners.shape == (4, 2)
     assert placed.hull_hl_points.shape[1] == 2
@@ -84,6 +83,7 @@ def test_random_affine_card_is_deterministic_under_seed() -> None:
 # ---------------------------------------------------------------------------
 # End-to-end scene rendering — the §3.2 smoke gate
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("n_cards", [2, 3])
 def test_render_n_scenes_yields_valid_labels(tmp_path: Path, n_cards: int) -> None:

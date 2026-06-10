@@ -30,6 +30,11 @@ class AugmentRange:
     translate_frac: tuple[float, float] = (-0.15, 0.15)
 
 
+#: Shared default augmentation range; ``AugmentRange`` is frozen, so a single
+#: module-level instance is safe to reuse as a default argument value.
+_DEFAULT_AUGMENT = AugmentRange()
+
+
 @dataclass(frozen=True)
 class PlacedCard:
     """A card laid out on the scene canvas, with tracked keypoints.
@@ -72,7 +77,8 @@ def _apply_affine_points(
         return points
     ones = np.ones((points.shape[0], 1), dtype=np.float32)
     homog = np.concatenate([points.astype(np.float32), ones], axis=1)  # (N, 3)
-    return (matrix @ homog.T).T.astype(np.float32)
+    transformed: NDArray[np.float32] = (matrix @ homog.T).T.astype(np.float32)
+    return transformed
 
 
 def random_affine_card(
@@ -82,7 +88,7 @@ def random_affine_card(
     *,
     rng: np.random.Generator,
     canvas_size: int = SCENE_SIZE,
-    aug: AugmentRange = AugmentRange(),
+    aug: AugmentRange = _DEFAULT_AUGMENT,
 ) -> PlacedCard:
     """Place the card on a scene-sized canvas and apply a random affine.
 
@@ -98,13 +104,16 @@ def random_affine_card(
         A ``PlacedCard`` with the warped image and the transformed keypoints.
     """
     if card_bgra.shape != (CARD_HEIGHT, CARD_WIDTH, 4):
-        raise ValueError(
-            f"card must be {(CARD_HEIGHT, CARD_WIDTH, 4)}, got {card_bgra.shape}"
-        )
+        raise ValueError(f"card must be {(CARD_HEIGHT, CARD_WIDTH, 4)}, got {card_bgra.shape}")
 
-    canvas, dx, dy = _place_card_on_canvas(card_bgra, canvas_size)
+    # Lay the card out at full size on a placement canvas at least as large as
+    # the card itself, so a requested output smaller than the card (e.g. a 256px
+    # preview) never truncates the source. The affine then warps this placement
+    # canvas into the requested ``canvas_size`` output.
+    place_size = max(canvas_size, CARD_HEIGHT, CARD_WIDTH)
+    canvas, dx, dy = _place_card_on_canvas(card_bgra, place_size)
 
-    # Card outline keypoints in canvas coordinates.
+    # Card outline keypoints in placement-canvas coordinates.
     card_corners = np.array(
         [
             [dx, dy],
@@ -114,20 +123,26 @@ def random_affine_card(
         ],
         dtype=np.float32,
     )
-    # Hull points, lifted into canvas coordinates by the same offset.
-    hull_hl_pts = np.asarray(hull_hl).reshape(-1, 2).astype(np.float32) + (dx, dy)
-    hull_lr_pts = np.asarray(hull_lr).reshape(-1, 2).astype(np.float32) + (dx, dy)
+    # Hull points, lifted into placement-canvas coordinates by the same offset.
+    offset = np.array([dx, dy], dtype=np.float32)
+    hull_hl_pts = np.asarray(hull_hl).reshape(-1, 2).astype(np.float32) + offset
+    hull_lr_pts = np.asarray(hull_lr).reshape(-1, 2).astype(np.float32) + offset
 
-    # Random affine parameters.
+    # Random affine parameters. Rotation/scale pivot on the card centre (the
+    # placement-canvas centre); a recentre term maps that pivot to the output
+    # centre, so the card stays centred when the placement canvas is larger than
+    # the requested output. When ``canvas_size >= card`` this reduces exactly to
+    # a plain rotate-scale-translate about the output centre.
     angle = float(rng.uniform(*aug.rotation_deg))
     scale = float(rng.uniform(*aug.scale))
     tx_frac = float(rng.uniform(*aug.translate_frac))
     ty_frac = float(rng.uniform(*aug.translate_frac))
-    centre = (canvas_size / 2.0, canvas_size / 2.0)
+    centre = (place_size / 2.0, place_size / 2.0)
+    recentre = (canvas_size - place_size) / 2.0
 
     matrix = cv2.getRotationMatrix2D(centre, angle, scale).astype(np.float32)
-    matrix[0, 2] += tx_frac * canvas_size
-    matrix[1, 2] += ty_frac * canvas_size
+    matrix[0, 2] += recentre + tx_frac * canvas_size
+    matrix[1, 2] += recentre + ty_frac * canvas_size
 
     warped = cv2.warpAffine(
         canvas,
@@ -138,7 +153,7 @@ def random_affine_card(
         borderValue=(0, 0, 0, 0),
     )
     return PlacedCard(
-        image=warped,
+        image=warped.astype(np.uint8, copy=False),
         card_corners=_apply_affine_points(matrix, card_corners),
         hull_hl_points=_apply_affine_points(matrix, hull_hl_pts),
         hull_lr_points=_apply_affine_points(matrix, hull_lr_pts),

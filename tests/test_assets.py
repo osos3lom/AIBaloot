@@ -12,16 +12,16 @@ from hakim_vision.synthetic import (
     CARD_HEIGHT,
     CARD_WIDTH,
     Backgrounds,
-    CardSample,
     Cards,
+    CardSample,
     pack_backgrounds,
     pack_cards,
 )
 
-
 # ---------------------------------------------------------------------------
 # Backgrounds
 # ---------------------------------------------------------------------------
+
 
 def _write_random_texture(path: Path, *, size: int = 64, seed: int = 0) -> None:
     rng = np.random.default_rng(seed)
@@ -62,6 +62,7 @@ def test_backgrounds_rejects_empty(tmp_path: Path) -> None:
 # Cards
 # ---------------------------------------------------------------------------
 
+
 def _write_canonical_card(path: Path, *, seed: int = 0) -> None:
     """Write a canonical-sized BGRA "card" with a noisy interior."""
     rng = np.random.default_rng(seed)
@@ -81,9 +82,7 @@ def test_pack_cards_no_hulls_round_trip(tmp_path: Path) -> None:
         _write_canonical_card(cards_root / "7s" / f"{i}.png", seed=10 + i)
 
     out = tmp_path / "shards"
-    shards = pack_cards(
-        cards_root, out, shard_size=2, shard_prefix="cards", extract_hulls=False
-    )
+    shards = pack_cards(cards_root, out, shard_size=2, shard_prefix="cards", extract_hulls=False)
     assert len(shards) >= 1
 
     cards = Cards(shards, rng=np.random.default_rng(0))
@@ -96,8 +95,10 @@ def test_pack_cards_no_hulls_round_trip(tmp_path: Path) -> None:
     assert isinstance(sample, CardSample)
     assert sample.name == "Ah"
     assert sample.image.shape[:2] == (CARD_HEIGHT, CARD_WIDTH)
-    assert sample.hull_hl.ndim == 3 and sample.hull_hl.shape[2] == 2
-    assert sample.hull_lr.ndim == 3 and sample.hull_lr.shape[2] == 2
+    assert sample.hull_hl.ndim == 3
+    assert sample.hull_hl.shape[2] == 2
+    assert sample.hull_lr.ndim == 3
+    assert sample.hull_lr.shape[2] == 2
 
 
 def test_cards_unknown_class_raises(tmp_path: Path) -> None:

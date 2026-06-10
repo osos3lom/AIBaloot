@@ -43,9 +43,7 @@ def generate(
     backgrounds_dir: Path = typer.Option(
         ..., "--backgrounds", help="Directory of backgrounds-*.tar shards."
     ),
-    cards_dir: Path = typer.Option(
-        ..., "--cards", help="Directory of cards-*.tar shards."
-    ),
+    cards_dir: Path = typer.Option(..., "--cards", help="Directory of cards-*.tar shards."),
     output_dir: Path = typer.Option(
         Path("data/scenes"), "--output", "-o", help="Where to write scenes + labels."
     ),
@@ -71,9 +69,7 @@ def generate(
     class_to_id = {name: i for i, name in enumerate(cards.class_names)}
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    (output_dir / "classes.txt").write_text(
-        "\n".join(cards.class_names) + "\n", encoding="utf-8"
-    )
+    (output_dir / "classes.txt").write_text("\n".join(cards.class_names) + "\n", encoding="utf-8")
 
     with Progress() as progress:
         task = progress.add_task("rendering", total=count)
@@ -103,9 +99,7 @@ def cmd_pack_backgrounds(
     prefix: str = typer.Option("backgrounds", "--prefix"),
 ) -> None:
     """Pack background textures into tar shards loadable by `Backgrounds`."""
-    shards = pack_backgrounds(
-        images_dir, output_dir, shard_size=shard_size, shard_prefix=prefix
-    )
+    shards = pack_backgrounds(images_dir, output_dir, shard_size=shard_size, shard_prefix=prefix)
     console.print(f"Wrote {len(shards)} shard(s) to {output_dir}")
 
 

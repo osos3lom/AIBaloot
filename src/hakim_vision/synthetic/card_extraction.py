@@ -128,7 +128,12 @@ def extract_card(
     if area_box <= 0:
         return None
 
-    rectangularity = area_cnt / area_box
+    # ``area_cnt`` and ``area_box`` are independent polygon-area approximations
+    # (traced contour vs. the 4-point min-area box), so pixel discretization can
+    # push the ratio a hair above 1.0 for a near-perfect rectangle. Clamp to the
+    # documented (0..1) range — the exact overshoot also varies across OpenCV
+    # builds, so leaving it unclamped makes the value platform-dependent.
+    rectangularity = min(1.0, area_cnt / area_box)
     if rectangularity < rectangularity_threshold:
         return None
 
@@ -136,7 +141,7 @@ def extract_card(
     ref = REF_CARD if w_r > h_r else REF_CARD_ROT
     perspective = cv2.getPerspectiveTransform(box.astype(np.float32), ref)
     warped = cv2.warpPerspective(frame, perspective, (CARD_WIDTH, CARD_HEIGHT))
-    warped_bgra = cv2.cvtColor(warped, cv2.COLOR_BGR2BGRA)
+    warped_bgra = cv2.cvtColor(warped, cv2.COLOR_BGR2BGRA).astype(np.uint8, copy=False)
 
     # Re-project the source contour into the warped frame and use it to build
     # the alpha channel — this gives a clean cut-out even for slightly
@@ -146,7 +151,7 @@ def extract_card(
     ).astype(np.intp)
 
     alpha = np.zeros(warped_bgra.shape[:2], dtype=np.uint8)
-    cv2.drawContours(alpha, cnt_warped, 0, 255, -1)
+    cv2.drawContours(alpha, list(cnt_warped), 0, 255, -1)
     alpha = cv2.bitwise_and(alpha, _ALPHA_MASK)
     warped_bgra[:, :, 3] = alpha
 

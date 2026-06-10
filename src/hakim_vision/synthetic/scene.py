@@ -15,8 +15,8 @@ Design notes:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Sequence
 
 import cv2
 import numpy as np
@@ -24,7 +24,7 @@ from numpy.typing import NDArray
 from shapely.geometry import Polygon
 
 from hakim_vision.geometry import YoloBox, voc_to_yolo
-from hakim_vision.synthetic.assets import Backgrounds, CardSample, Cards
+from hakim_vision.synthetic.assets import Backgrounds, Cards, CardSample
 from hakim_vision.synthetic.constants import SCENE_SIZE
 from hakim_vision.synthetic.hull import points_to_bbox, points_to_polygon
 from hakim_vision.synthetic.transforms import (
@@ -36,6 +36,10 @@ from hakim_vision.synthetic.transforms import (
 # Maximum fraction of a corner-hull that may be occluded by a later card
 # before we drop that corner's bounding box from the labels.
 _DEFAULT_INTERSECT_RATIO: float = 0.10
+
+#: Shared default augmentation; ``AugmentRange`` is frozen, so a single
+#: module-level instance is safe to reuse as a default argument value.
+_DEFAULT_AUGMENT = AugmentRange()
 
 
 @dataclass(frozen=True)
@@ -66,7 +70,8 @@ def _alpha_composite(base: NDArray[np.uint8], overlay_bgra: NDArray[np.uint8]) -
     overlay_rgb = overlay_bgra[:, :, :3].astype(np.float32)
     base_f = base.astype(np.float32)
     out = overlay_rgb * alpha + base_f * (1.0 - alpha)
-    return np.clip(out, 0, 255).astype(np.uint8)
+    composited: NDArray[np.uint8] = np.clip(out, 0, 255).astype(np.uint8)
+    return composited
 
 
 def _safe_polygon(points: NDArray[np.float32]) -> Polygon | None:
@@ -93,7 +98,7 @@ def _kept_after_occlusion(
         return False
     inter = hull_poly.intersection(occluder_poly).area
     visible_frac = (hull_poly.area - inter) / hull_poly.area
-    return visible_frac >= (1.0 - intersect_ratio)
+    return bool(visible_frac >= (1.0 - intersect_ratio))
 
 
 def _labels_for_card(
@@ -108,9 +113,7 @@ def _labels_for_card(
     occluder_corners = occluder.card_corners if occluder is not None else None
     labels: list[SceneLabel] = []
     for hull_pts in (placed.hull_hl_points, placed.hull_lr_points):
-        if not _kept_after_occlusion(
-            hull_pts, occluder_corners, intersect_ratio=intersect_ratio
-        ):
+        if not _kept_after_occlusion(hull_pts, occluder_corners, intersect_ratio=intersect_ratio):
             continue
         bbox = points_to_bbox(hull_pts, image_size=(canvas_size, canvas_size))
         if bbox is None:
@@ -147,7 +150,7 @@ def compose_scene(
     if background_bgr.shape[:2] != (canvas_size, canvas_size):
         background_bgr = cv2.resize(
             background_bgr, (canvas_size, canvas_size), interpolation=cv2.INTER_AREA
-        )
+        ).astype(np.uint8, copy=False)
 
     image = background_bgr.copy()
     for placed, _cls in placed_cards:
@@ -178,7 +181,7 @@ def render_random_scene(
     rng: np.random.Generator,
     n_cards: int = 2,
     canvas_size: int = SCENE_SIZE,
-    aug: AugmentRange = AugmentRange(),
+    aug: AugmentRange = _DEFAULT_AUGMENT,
     intersect_ratio: float = _DEFAULT_INTERSECT_RATIO,
 ) -> Scene:
     """Sample N cards + 1 background and produce a fully composited scene."""
@@ -191,7 +194,7 @@ def render_random_scene(
     for sample in samples:
         rgb_card = sample.image
         if rgb_card.shape[2] == 3:
-            rgb_card = cv2.cvtColor(rgb_card, cv2.COLOR_BGR2BGRA)
+            rgb_card = cv2.cvtColor(rgb_card, cv2.COLOR_BGR2BGRA).astype(np.uint8, copy=False)
         placed_card = random_affine_card(
             rgb_card,
             sample.hull_hl,
@@ -202,9 +205,7 @@ def render_random_scene(
         )
         placed.append((placed_card, sample.name))
 
-    return compose_scene(
-        bg, placed, canvas_size=canvas_size, intersect_ratio=intersect_ratio
-    )
+    return compose_scene(bg, placed, canvas_size=canvas_size, intersect_ratio=intersect_ratio)
 
 
 def write_yolo_label(scene: Scene, class_to_id: dict[str, int]) -> str:

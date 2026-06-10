@@ -41,6 +41,7 @@ def _make_card_on_background(
 # variance_of_laplacian
 # ---------------------------------------------------------------------------
 
+
 def test_focus_higher_for_sharp_than_blurred() -> None:
     img = _make_card_on_background()
     sharp = variance_of_laplacian(img)
@@ -58,6 +59,7 @@ def test_focus_rejects_wrong_shape() -> None:
 # ---------------------------------------------------------------------------
 # extract_card
 # ---------------------------------------------------------------------------
+
 
 def test_extract_card_on_blurred_image_returns_none() -> None:
     img = _make_card_on_background()
@@ -85,6 +87,7 @@ def test_extract_card_rejects_non_bgr_input() -> None:
 # ---------------------------------------------------------------------------
 # hull / bbox helpers
 # ---------------------------------------------------------------------------
+
 
 def test_hull_to_points_translates() -> None:
     hull = np.array([[[0, 0]], [[10, 0]], [[10, 10]], [[0, 10]]], dtype=np.intp)
@@ -125,6 +128,7 @@ def test_points_to_bbox_clipped_to_zero_returns_none() -> None:
 # ---------------------------------------------------------------------------
 # find_corner_hull (smoke; uses synthetic card image)
 # ---------------------------------------------------------------------------
+
 
 def test_find_corner_hull_returns_none_on_blank_card() -> None:
     # A blank white card has no internal edges → no hull.
