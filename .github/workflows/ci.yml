@@ -74,6 +74,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # gitleaks needs full history to scan the pushed commit range
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
