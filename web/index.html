@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0b3a2e">
+  <title>حكيم | احسب قيمة يدك في البلوت</title>
+  <meta name="description" content="صوّر الأوراق التي بيدك، وحكيم يتعرّف عليها ويحسب قيمتها صن أو حكم مع المشاريع.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { corePlugins: { preflight: true } };
+  </script>
+  <style>
+    :root {
+      /* Majlis felt: deep green board, cream cards, brass for value. */
+      --felt-900: #062b21;
+      --felt-800: #0b3a2e;
+      --felt-700: #12503e;
+      --felt-line: rgba(214, 232, 220, 0.14);
+      --cream-50: #fbf7ee;
+      --cream-100: #f3ecdd;
+      --cream-300: #d9cfb8;
+      --ink-900: #14201b;
+      --brass-400: #e3b862;
+      --brass-500: #c9973c;
+      --mint-400: #58d3a4;
+      --rose-500: #d3564f;
+      --rose-400: #e4776f;
+
+      --radius-card: 14px;
+      --radius-panel: 22px;
+      --shadow-lift: 0 18px 40px -22px rgba(0, 0, 0, 0.85);
+      --shadow-card: 0 6px 14px -6px rgba(0, 0, 0, 0.6);
+      --step-fast: 140ms;
+      --step-normal: 260ms;
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      font-family: 'Tajawal', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      color: var(--cream-50);
+      background-color: var(--felt-900);
+      background-image:
+        radial-gradient(ellipse 120% 80% at 50% -10%, var(--felt-700) 0%, transparent 60%),
+        radial-gradient(ellipse 90% 60% at 50% 110%, #041e17 0%, transparent 55%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+      background-attachment: fixed;
+      min-height: 100vh;
+    }
+
+    /* ---- Panels ------------------------------------------------------- */
+    .panel {
+      background: linear-gradient(168deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025));
+      border: 1px solid var(--felt-line);
+      border-radius: var(--radius-panel);
+      box-shadow: var(--shadow-lift);
+      backdrop-filter: blur(6px);
+    }
+    .panel--muted { opacity: 0.55; }
+    .panel--muted:focus-within { opacity: 1; }
+
+    .step-index {
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 0.875rem;
+      color: var(--felt-900);
+      background: var(--brass-400);
+      box-shadow: 0 0 0 4px rgba(227, 184, 98, 0.14);
+      flex: none;
+    }
+
+    /* ---- Card faces --------------------------------------------------- */
+    .card-face {
+      position: relative;
+      width: 62px;
+      height: 92px;
+      border-radius: var(--radius-card);
+      background: linear-gradient(160deg, var(--cream-50), var(--cream-100));
+      color: var(--ink-900);
+      box-shadow: var(--shadow-card);
+      border: 1px solid var(--cream-300);
+      display: grid;
+      place-items: center;
+      transition: transform var(--step-fast) var(--ease), box-shadow var(--step-fast) var(--ease);
+    }
+    .card-face--red { color: var(--rose-500); }
+    .card-face__rank {
+      position: absolute;
+      top: 5px;
+      inset-inline-start: 7px;
+      font-size: 0.95rem;
+      font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .card-face__pip { font-size: 2rem; line-height: 1; }
+    .card-face__corner {
+      position: absolute;
+      bottom: 5px;
+      inset-inline-end: 7px;
+      font-size: 0.8rem;
+      opacity: 0.75;
+    }
+    .card-face__badge {
+      position: absolute;
+      top: -7px;
+      inset-inline-start: -7px;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: var(--brass-400);
+      color: var(--felt-900);
+      font-size: 0.7rem;
+      font-weight: 800;
+      line-height: 20px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      box-shadow: 0 0 0 2px rgba(6, 43, 33, 0.9);
+    }
+    .card-face--unknown {
+      background: repeating-linear-gradient(135deg, rgba(255,255,255,0.09) 0 8px, rgba(255,255,255,0.035) 8px 16px);
+      color: var(--cream-50);
+      border-style: dashed;
+      border-color: rgba(227, 184, 98, 0.55);
+      box-shadow: none;
+    }
+    .card-face--trump {
+      box-shadow: 0 0 0 2px var(--brass-400), var(--shadow-card);
+    }
+
+    .card-slot {
+      background: none;
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+      display: block;
+      position: relative;
+    }
+    .card-slot:hover .card-face,
+    .card-slot:focus-visible .card-face { transform: translateY(-6px) rotate(-1deg); }
+    .card-slot__points {
+      display: block;
+      margin-top: 6px;
+      /* Isolate so "+11" keeps its sign on the left inside RTL text. */
+      direction: ltr;
+      unicode-bidi: isolate;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--brass-400);
+      font-variant-numeric: tabular-nums;
+    }
+    .add-slot {
+      width: 62px;
+      height: 92px;
+      border-radius: var(--radius-card);
+      border: 1px dashed rgba(251, 247, 238, 0.35);
+      color: rgba(251, 247, 238, 0.75);
+      display: grid;
+      place-items: center;
+      font-size: 1.5rem;
+      background: rgba(255, 255, 255, 0.03);
+      transition: border-color var(--step-fast) var(--ease), color var(--step-fast) var(--ease);
+    }
+    .add-slot:hover, .add-slot:focus-visible {
+      border-color: var(--brass-400);
+      color: var(--brass-400);
+    }
+
+    /* ---- Controls ----------------------------------------------------- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      border-radius: 999px;
+      font-weight: 700;
+      transition: transform var(--step-fast) var(--ease), background var(--step-fast) var(--ease);
+      min-height: 44px;
+      padding: 0 1.15rem;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn--primary { background: var(--brass-400); color: var(--felt-900); }
+    .btn--primary:hover { background: var(--brass-500); }
+    .btn--ghost {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--cream-50);
+      border: 1px solid var(--felt-line);
+    }
+    .btn--ghost:hover { background: rgba(255, 255, 255, 0.12); }
+    .btn--quiet {
+      min-height: 36px;
+      padding: 0 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: rgba(251, 247, 238, 0.75);
+      border-radius: 10px;
+    }
+    .btn--quiet:hover { color: var(--cream-50); background: rgba(255,255,255,0.07); }
+
+    :where(button, a, input, select, [tabindex]):focus-visible {
+      outline: 2px solid var(--brass-400);
+      outline-offset: 3px;
+      border-radius: 8px;
+    }
+
+    .segmented {
+      display: grid;
+      grid-auto-flow: column;
+      gap: 4px;
+      padding: 4px;
+      background: rgba(4, 24, 18, 0.6);
+      border: 1px solid var(--felt-line);
+      border-radius: 999px;
+    }
+    .segmented button {
+      min-height: 40px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: rgba(251, 247, 238, 0.7);
+      transition: background var(--step-fast) var(--ease), color var(--step-fast) var(--ease);
+    }
+    .segmented button[aria-pressed="true"] {
+      background: var(--cream-50);
+      color: var(--felt-900);
+    }
+
+    .suit-btn {
+      min-height: 46px;
+      border-radius: 12px;
+      border: 1px solid var(--felt-line);
+      background: rgba(255, 255, 255, 0.05);
+      font-size: 1.25rem;
+      transition: background var(--step-fast) var(--ease), border-color var(--step-fast) var(--ease);
+    }
+    .suit-btn[aria-pressed="true"] {
+      background: var(--cream-50);
+      border-color: var(--cream-50);
+    }
+    .suit-btn[data-color="red"] { color: var(--rose-400); }
+    .suit-btn[data-color="black"] { color: var(--cream-50); }
+    .suit-btn[aria-pressed="true"][data-color="red"] { color: var(--rose-500); }
+    .suit-btn[aria-pressed="true"][data-color="black"] { color: var(--ink-900); }
+
+    /* ---- Score display ------------------------------------------------ */
+    .score-total {
+      font-size: clamp(3.5rem, 14vw, 5.5rem);
+      font-weight: 900;
+      line-height: 0.9;
+      color: var(--brass-400);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+    .meter {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(4, 24, 18, 0.65);
+      overflow: hidden;
+    }
+    .meter__fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--mint-400), var(--brass-400));
+      transition: width var(--step-normal) var(--ease);
+    }
+
+    .project-badge__value {
+      direction: ltr;
+      unicode-bidi: isolate;
+      font-variant-numeric: tabular-nums;
+    }
+    .project-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(227, 184, 98, 0.14);
+      border: 1px solid rgba(227, 184, 98, 0.4);
+      color: var(--brass-400);
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .dropzone {
+      border: 1.5px dashed rgba(251, 247, 238, 0.28);
+      border-radius: var(--radius-panel);
+      transition: border-color var(--step-fast) var(--ease), background var(--step-fast) var(--ease);
+    }
+    .dropzone[data-active="true"] {
+      border-color: var(--brass-400);
+      background: rgba(227, 184, 98, 0.08);
+    }
+
+    .notice {
+      display: flex;
+      gap: 0.6rem;
+      align-items: flex-start;
+      padding: 0.7rem 0.9rem;
+      border-radius: 14px;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    .notice--info { background: rgba(88, 211, 164, 0.1); border: 1px solid rgba(88, 211, 164, 0.3); }
+    .notice--warn { background: rgba(227, 184, 98, 0.1); border: 1px solid rgba(227, 184, 98, 0.35); }
+    .notice--error { background: rgba(211, 86, 79, 0.12); border: 1px solid rgba(211, 86, 79, 0.4); }
+
+    dialog::backdrop { background: rgba(3, 18, 13, 0.75); backdrop-filter: blur(4px); }
+    dialog {
+      border: 1px solid var(--felt-line);
+      border-radius: var(--radius-panel);
+      background: #0a3428;
+      color: var(--cream-50);
+      padding: 0;
+      max-width: min(440px, 94vw);
+      width: 100%;
+    }
+    .picker-cell {
+      min-height: 44px;
+      border-radius: 10px;
+      font-weight: 700;
+      background: rgba(251, 247, 238, 0.94);
+      color: var(--ink-900);
+      font-variant-numeric: tabular-nums;
+      transition: transform var(--step-fast) var(--ease);
+    }
+    .picker-cell[data-color="red"] { color: var(--rose-500); }
+    .picker-cell:hover:not(:disabled) { transform: translateY(-2px); }
+    .picker-cell:disabled { opacity: 0.28; cursor: not-allowed; }
+
+    .skeleton-pulse { animation: pulse 1.4s var(--ease) infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <a href="#step-capture" class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-3 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-emerald-950" data-i18n="skip_link">تخطَّ إلى المحتوى</a>
+
+  <header class="sticky top-0 z-30 border-b border-white/10 bg-[#062b21]/85 backdrop-blur">
+    <div class="mx-auto flex h-14 max-w-3xl items-center justify-between gap-3 px-4">
+      <div class="flex items-center gap-2.5">
+        <span class="grid h-9 w-9 place-items-center rounded-xl bg-[var(--brass-400)] text-xl font-black text-[var(--felt-900)]">ح</span>
+        <span>
+          <span data-i18n="app_name" class="block text-base font-extrabold leading-none">حكيم</span>
+          <span data-i18n="app_tagline" class="block text-[11px] leading-tight text-white/60">احسب قيمة يدك</span>
+        </span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <button id="lang-toggle" class="btn btn--quiet" type="button">English</button>
+        <a href="studio.html" class="btn btn--quiet" data-i18n="lab_link">مختبر البيانات</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto w-full max-w-3xl flex-1 space-y-4 px-4 pb-40 pt-5 sm:pb-8">
+
+    <!-- STEP 1 — capture -->
+    <section id="step-capture" class="panel p-4 sm:p-5" aria-labelledby="step-capture-title">
+      <div class="mb-3 flex items-center gap-2.5">
+        <span class="step-index">١</span>
+        <h2 id="step-capture-title" data-i18n="step1_title" class="text-base font-extrabold">صوّر الأوراق التي بيدك</h2>
+      </div>
+
+      <div id="capture-empty" class="space-y-3">
+        <div id="dropzone" class="dropzone px-4 py-7 text-center">
+          <p data-i18n="capture_hint" class="mx-auto max-w-xs text-sm leading-relaxed text-white/70">
+            افرد أوراقك على سطح واضح وصوّرها من الأعلى، أو ارفع صورة جاهزة.
+          </p>
+          <div class="mt-4 flex flex-wrap justify-center gap-2">
+            <button id="btn-camera" type="button" class="btn btn--primary">
+              <span aria-hidden="true">📷</span><span data-i18n="btn_camera">التقط صورة</span>
+            </button>
+            <button id="btn-upload" type="button" class="btn btn--ghost">
+              <span aria-hidden="true">🖼️</span><span data-i18n="btn_upload">اختر من الجهاز</span>
+            </button>
+          </div>
+          <p data-i18n="privacy_note" class="mt-3 text-xs text-white/45">الصورة تُعالَج داخل متصفحك ولا تُرفع إلى أي خادم.</p>
+        </div>
+
+        <button id="btn-skip-photo" type="button" class="btn btn--quiet w-full justify-center" data-i18n="btn_skip_photo">
+          أو أدخل الأوراق يدويًا بدون صورة
+        </button>
+
+        <input id="file-camera" type="file" accept="image/*" capture="environment" class="sr-only">
+        <input id="file-upload" type="file" accept="image/*" class="sr-only">
+      </div>
+
+      <div id="capture-preview" class="hidden space-y-3">
+        <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-black/30">
+          <canvas id="photo-canvas" class="block max-h-[46vh] w-full object-contain"></canvas>
+          <div id="detect-overlay" class="absolute inset-0 hidden place-items-center bg-black/55 backdrop-blur-sm">
+            <div class="text-center">
+              <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-white/20 border-t-[var(--brass-400)]"></div>
+              <p data-i18n="detecting" class="mt-3 text-sm text-white/80">جارٍ تحليل الصورة…</p>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p id="detect-summary" class="text-xs text-white/60"></p>
+          <div class="flex gap-2">
+            <button id="btn-redetect" type="button" class="btn btn--quiet" data-i18n="btn_redetect">أعد التحليل</button>
+            <button id="btn-retake" type="button" class="btn btn--quiet" data-i18n="btn_retake">صورة أخرى</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 2 — review the hand -->
+    <section id="step-hand" class="panel panel--muted p-4 sm:p-5" aria-labelledby="step-hand-title">
+      <div class="mb-1 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5">
+          <span class="step-index">٢</span>
+          <h2 id="step-hand-title" data-i18n="step2_title" class="text-base font-extrabold">راجع الأوراق</h2>
+        </div>
+        <span id="hand-count" class="text-xs font-bold text-white/60 tabular-nums">0 / 8</span>
+      </div>
+      <p data-i18n="step2_hint" class="mb-3 text-xs leading-relaxed text-white/55">اضغط أي ورقة لتصحيحها، والعلامة ؟ تعني موضعًا رصده حكيم ولم يحدّد قيمته. أضف أي ورقة فاتته بزر +.</p>
+
+      <div id="hand-strip" class="flex flex-wrap gap-2.5 sm:gap-3"></div>
+
+      <div id="hand-notices" class="mt-3 space-y-2"></div>
+
+      <div class="mt-3 flex justify-between">
+        <button id="btn-clear-hand" type="button" class="btn btn--quiet" data-i18n="btn_clear_hand">مسح الكل</button>
+      </div>
+    </section>
+
+    <!-- STEP 3 — value -->
+    <section id="step-score" class="panel panel--muted p-4 sm:p-5" aria-labelledby="step-score-title">
+      <div class="mb-3 flex items-center gap-2.5">
+        <span class="step-index">٣</span>
+        <h2 id="step-score-title" data-i18n="step3_title" class="text-base font-extrabold">قيمة يدك</h2>
+      </div>
+
+      <div class="space-y-3">
+        <div class="segmented" role="group" aria-label="نوع اللعب">
+          <button id="mode-sun" type="button" aria-pressed="true" data-i18n="mode_sun">صن</button>
+          <button id="mode-hokum" type="button" aria-pressed="false" data-i18n="mode_hokum">حكم</button>
+        </div>
+
+        <div id="trump-picker" class="hidden">
+          <span data-i18n="lbl_trump" class="mb-1.5 block text-xs font-semibold text-white/65">اختر الحكم</span>
+          <div class="grid grid-cols-4 gap-2" id="trump-buttons"></div>
+        </div>
+      </div>
+
+      <div class="mt-5 grid gap-5 sm:grid-cols-[auto_1fr] sm:items-end">
+        <div>
+          <span data-i18n="lbl_total" class="block text-xs font-semibold uppercase tracking-wider text-white/55">مجموع النقاط</span>
+          <output id="score-total" class="score-total" aria-live="polite">0</output>
+        </div>
+        <div class="space-y-2">
+          <div class="flex justify-between text-xs text-white/65">
+            <span data-i18n="lbl_card_points">نقاط الأوراق</span>
+            <span id="score-cards" class="font-bold tabular-nums text-white/85">0</span>
+          </div>
+          <div class="meter"><div id="score-meter" class="meter__fill" style="width:0%"></div></div>
+          <p id="score-share" class="text-[11px] text-white/50"></p>
+          <div class="flex justify-between text-xs text-white/65">
+            <span data-i18n="lbl_project_points">نقاط المشاريع</span>
+            <span id="score-projects-total" class="font-bold tabular-nums text-white/85">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="projects-row" class="mt-4 flex flex-wrap gap-2"></div>
+
+      <details class="mt-4 rounded-2xl border border-white/10 bg-black/15">
+        <summary data-i18n="lbl_breakdown" class="cursor-pointer select-none px-4 py-3 text-sm font-bold">تفصيل النقاط ورقة بورقة</summary>
+        <div class="px-4 pb-4">
+          <table class="w-full text-sm">
+            <caption class="sr-only" data-i18n="lbl_breakdown">تفصيل النقاط ورقة بورقة</caption>
+            <thead class="text-xs text-white/50">
+              <tr>
+                <th scope="col" class="py-1 text-start font-semibold" data-i18n="th_card">الورقة</th>
+                <th scope="col" class="py-1 text-start font-semibold" data-i18n="th_note">ملاحظة</th>
+                <th scope="col" class="py-1 text-end font-semibold" data-i18n="th_points">النقاط</th>
+              </tr>
+            </thead>
+            <tbody id="breakdown-body" class="divide-y divide-white/5"></tbody>
+          </table>
+        </div>
+      </details>
+
+      <div id="suggestion" class="mt-4"></div>
+
+      <div class="mt-4 flex flex-wrap gap-2">
+        <button id="btn-copy" type="button" class="btn btn--ghost" data-i18n="btn_copy_result">انسخ النتيجة</button>
+      </div>
+
+      <p data-i18n="rules_note" class="mt-4 text-[11px] leading-relaxed text-white/40">
+        القيم المعتمدة: صن ١٢٠ نقطة، حكم ١٥٢ نقطة (دون العشرة الأخيرة). المشاريع: سرا ٢٠، خمسين ٥٠، مية ١٠٠، أربعمية ٤٠٠، بلوت ٢٠ في الحكم. قواعد المشاريع تختلف بين المجالس.
+      </p>
+    </section>
+  </main>
+
+  <!-- Mobile running total -->
+  <div id="sticky-bar" class="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#062b21]/95 px-4 py-3 backdrop-blur sm:hidden">
+    <div class="mx-auto flex max-w-3xl items-center justify-between gap-3">
+      <div>
+        <span id="sticky-label" data-i18n="sticky_label" class="block text-[11px] text-white/55">صن</span>
+        <span id="sticky-total" class="block text-2xl font-black leading-none tabular-nums text-[var(--brass-400)]">0</span>
+      </div>
+      <button id="sticky-action" type="button" class="btn btn--primary" data-i18n="sticky_action">أضف ورقة</button>
+    </div>
+  </div>
+
+  <footer class="border-t border-white/10 px-4 py-5 text-center text-xs text-white/40">
+    <p data-i18n="footer_text">حكيم • مشروع مفتوح المصدر للرؤية الحاسوبية في البلوت السعودي • ترخيص MIT</p>
+  </footer>
+
+  <!-- Card picker -->
+  <dialog id="card-picker" aria-labelledby="picker-title">
+    <form method="dialog" class="p-4">
+      <div class="mb-3 flex items-center justify-between">
+        <h2 id="picker-title" data-i18n="picker_title" class="text-base font-extrabold">أي ورقة هذه؟</h2>
+        <button value="cancel" class="btn btn--quiet" data-i18n="btn_close">إغلاق</button>
+      </div>
+      <div id="picker-grid" class="space-y-2"></div>
+      <button id="picker-remove" type="button" class="btn btn--quiet mt-3 w-full justify-center text-[var(--rose-400)]" data-i18n="btn_remove_card">احذف هذه الورقة</button>
+    </form>
+  </dialog>
+
+  <script src="i18n.js"></script>
+  <script src="scoring.js"></script>
+  <script src="detect.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

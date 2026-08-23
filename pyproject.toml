@@ -38,6 +38,9 @@ dev = [
     "hypothesis>=6.112",
     "pre-commit>=3.8",
 ]
+train = [
+    "ultralytics>=8.3,<9.0",
+]
 notebooks = [
     "jupyter>=1.0",
     "matplotlib>=3.9",
@@ -113,7 +116,7 @@ disallow_incomplete_defs = true
 files = ["src"]
 
 [[tool.mypy.overrides]]
-module = ["cv2.*", "shapely.*"]
+module = ["cv2.*", "shapely.*", "torch.*", "ultralytics.*"]
 ignore_missing_imports = true
 
 # ---------------------------------------------------------------------------

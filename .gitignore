@@ -56,3 +56,11 @@ data/backgrounds_src/
 .env
 .env.*
 !.env.example
+
+# Local test photos dropped into the web studio (not redistributable)
+web/samples/
+
+# Training runs and downloaded datasets
+runs/
+data/downloads/
+data/baloot-dataset/

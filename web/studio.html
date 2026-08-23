@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>استوديو حكيم للرؤية الحاسوبية | الذكاء الاصطناعي للبلوت السعودي</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Tajawal', 'Cairo', 'system-ui', 'sans-serif'],
+            arabic: ['Tajawal', 'Cairo', 'sans-serif']
+          },
+          colors: {
+            brand: { 500: '#10b981', 600: '#059669', 700: '#047857' },
+            slate: { 850: '#151e2e', 900: '#0f172a', 950: '#020617' }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <style>
+    body {
+      font-family: 'Tajawal', 'Cairo', system-ui, sans-serif;
+    }
+    .checkerboard {
+      background-color: #1e293b;
+      background-image: linear-gradient(45deg, #0f172a 25%, transparent 25%), linear-gradient(-45deg, #0f172a 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #0f172a 75%), linear-gradient(-45deg, transparent 75%, #0f172a 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+    .cell-border {
+      border-inline-start: 4px solid #10b981;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3 rtl:space-x-reverse">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center font-black text-xl shadow-lg shadow-emerald-500/20 text-slate-950">
+          ح
+        </div>
+        <div>
+          <div class="flex items-center space-x-2 rtl:space-x-reverse">
+            <h1 id="app-title" data-i18n="app_title" class="font-bold text-base leading-none tracking-tight">استوديو حكيم للرؤية الحاسوبية</h1>
+            <span id="app-badge" data-i18n="app_badge" class="text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">تسريع WebGPU</span>
+          </div>
+          <p id="app-subtitle" data-i18n="app_subtitle" class="text-xs text-slate-400">مختبر بيانات البلوت: توليد ووسم وتجهيز وتدريب</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-3 rtl:space-x-reverse">
+        <!-- Language Switcher Button -->
+        <a href="index.html" class="flex items-center space-x-1.5 rtl:space-x-reverse px-2.5 py-1.5 bg-emerald-800/60 hover:bg-emerald-700 text-emerald-100 border border-emerald-700 rounded-lg text-xs font-semibold transition">
+          <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+          <span>حاسبة اليد</span>
+        </a>
+
+        <button id="lang-toggle-btn" class="flex items-center space-x-1.5 rtl:space-x-reverse px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold transition">
+          <i data-lucide="globe" class="w-3.5 h-3.5 text-emerald-400"></i>
+          <span id="lang-btn-label">English</span>
+        </button>
+
+        <div id="pyodide-status" class="flex items-center space-x-2 rtl:space-x-reverse text-xs px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300">
+          <span id="gpu-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span id="status-text">جاري تشغيل محرك WebGPU...</span>
+        </div>
+        <a href="https://github.com/osos3lom/AIBaloot" target="_blank" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition">
+          <i data-lucide="github" class="w-5 h-5"></i>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Notebook Layout -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6 space-y-6">
+
+    <!-- Cell 1: Environment & Hardware Acceleration Info -->
+    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3 cell-border">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2 rtl:space-x-reverse">
+          <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-800 text-emerald-400 font-semibold">خلية [1]:</span>
+          <h2 data-i18n="cell1_title" class="text-sm font-semibold text-slate-200">بيئة التشغيل ومسرّع الرسوميات WebGPU</h2>
+        </div>
+        <button id="btn-run-cell1" class="px-3 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-medium flex items-center space-x-1 rtl:space-x-reverse transition">
+          <i data-lucide="play" class="w-3 h-3"></i>
+          <span data-i18n="btn_check_hardware">فحص العتاد</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1 text-xs">
+        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+          <span data-i18n="lbl_gpu_device" class="text-slate-400 block text-[11px]">وحدة معالجة الرسوميات (GPU)</span>
+          <span id="env-gpu" class="font-semibold text-emerald-400 font-mono">WebGPU Shader Core</span>
+        </div>
+        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+          <span data-i18n="lbl_deck_spec" class="text-slate-400 block text-[11px]">مواصفات صكة البلوت</span>
+          <span data-i18n="val_deck_spec" class="font-semibold text-slate-200 font-mono">32 بطاقة (8 قيم × 4 أشكال)</span>
+        </div>
+        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+          <span data-i18n="lbl_backend" class="text-slate-400 block text-[11px]">محرك الاستدلال العصبي</span>
+          <span id="env-backend" class="font-semibold text-slate-200 font-mono">—</span>
+        </div>
+        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+          <span data-i18n="lbl_latency" class="text-slate-400 block text-[11px]">زمن الاستجابة</span>
+          <span id="env-latency" class="font-semibold text-emerald-400 font-mono">—</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cell 2: Real Image Uploader & Interactive Annotation Tool -->
+    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 cell-border">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2 rtl:space-x-reverse">
+          <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-800 text-emerald-400 font-semibold">خلية [2]:</span>
+          <h2 data-i18n="cell2_title" class="text-sm font-semibold text-slate-200">استوديو الصور: رفع صورة حقيقية أو توليد مشهد تركيبي</h2>
+        </div>
+        <!-- Switch between Generator and Custom Upload -->
+        <div class="flex p-0.5 bg-slate-950 border border-slate-800 rounded-lg text-xs">
+          <button id="mode-upload-btn" class="px-3 py-1 font-medium rounded-md bg-emerald-600 text-white transition flex items-center space-x-1 rtl:space-x-reverse">
+            <i data-lucide="upload" class="w-3 h-3"></i>
+            <span data-i18n="tab_upload">رفع صورة حقيقية</span>
+          </button>
+          <button id="mode-synthetic-btn" class="px-3 py-1 font-medium rounded-md text-slate-400 hover:text-white transition flex items-center space-x-1 rtl:space-x-reverse">
+            <i data-lucide="sparkles" class="w-3 h-3"></i>
+            <span data-i18n="tab_synthetic">مولد المشاهد التركيبية</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Controls Column -->
+        <div class="lg:col-span-5 space-y-4">
+          
+          <!-- Upload Controls -->
+          <div id="upload-controls-box" class="space-y-3">
+            <div id="drop-zone" class="border-2 border-dashed border-slate-700 hover:border-emerald-500/80 bg-slate-950/60 rounded-xl p-5 text-center cursor-pointer transition flex flex-col items-center justify-center space-y-2">
+              <input id="image-file-input" type="file" accept="image/*" class="hidden">
+              <div class="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                <i data-lucide="cloud-upload" class="w-5 h-5"></i>
+              </div>
+              <div data-i18n="drop_zone_title" class="text-xs text-slate-300 font-medium">اسحب وأفلت صورة طاولة البلوت هنا</div>
+              <p data-i18n="drop_zone_sub" class="text-[10px] text-slate-500">تُحفظ بأمان في التخزين المحلي للمتصفح</p>
+            </div>
+
+            <!-- Preset Samples -->
+            <div class="space-y-1">
+              <label data-i18n="preset_samples_title" class="text-xs font-medium text-slate-300">عينات اختبار جاهزة</label>
+              <div class="grid grid-cols-3 gap-2">
+                <button id="btn-sample-scene" class="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg border border-slate-700 transition">
+                  <span data-i18n="btn_sample_scene">طاولة كاملة</span>
+                </button>
+                <button id="btn-sample-trick" class="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg border border-slate-700 transition">
+                  <span data-i18n="btn_sample_trick">فرش الدكة (4)</span>
+                </button>
+                <button id="btn-sample-fan" class="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg border border-slate-700 transition">
+                  <span data-i18n="btn_sample_fan">ورق اليد (6)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Saved Gallery -->
+            <div class="space-y-1">
+              <div class="flex justify-between items-center text-xs">
+                <span data-i18n="gallery_title" class="font-medium text-slate-300">معرض الصور المحفوظة</span>
+                <button id="btn-clear-storage" data-i18n="btn_clear_gallery" class="text-[10px] text-slate-500 hover:text-red-400 transition">مسح</button>
+              </div>
+              <div id="saved-gallery" class="flex gap-2 overflow-x-auto py-1">
+                <!-- Gallery thumbs -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Synthetic Controls (Shown when in synthetic mode) -->
+          <div id="synthetic-controls-box" class="space-y-3 hidden">
+            <div>
+              <label data-i18n="lbl_layout" class="text-xs font-medium text-slate-300">توزيع وترتيب الأوراق</label>
+              <select id="layout-select" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 mt-1">
+                <option value="trick_4" selected>أوراق اللعب بالوسط - فرش الدكة (4 أوراق)</option>
+                <option value="random_2">ورقتين متداخلة</option>
+                <option value="random_3">ثلاث أوراق متداخلة</option>
+                <option value="hand_fan">فرقة اليد - مروحة اللاعب (قوس)</option>
+              </select>
+            </div>
+            <div>
+              <label data-i18n="lbl_surface" class="text-xs font-medium text-slate-300">قماش وطاولة اللعب</label>
+              <select id="bg-select" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 mt-1">
+                <option value="green_felt" selected>لباد كازينو أخضر كلاسيكي</option>
+                <option value="red_felt">لباد مجلس عنابي فاخر</option>
+                <option value="blue_felt">لباد أزرق ملكي</option>
+                <option value="wood">خشب جوز مصقول</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <div>
+                <div class="flex justify-between text-[11px] text-slate-400">
+                  <span data-i18n="lbl_tilt">ميلان الكاميرا</span>
+                  <span id="perspective-val">25°</span>
+                </div>
+                <input id="perspective-tilt" type="range" min="0" max="50" step="5" value="25" class="w-full accent-emerald-500 bg-slate-800 h-1 cursor-pointer">
+              </div>
+              <div>
+                <div class="flex justify-between text-[11px] text-slate-400">
+                  <span data-i18n="lbl_shadow">كثافة الظل</span>
+                  <span id="shadow-val">60%</span>
+                </div>
+                <input id="shadow-intensity" type="range" min="0" max="100" step="10" value="60" class="w-full accent-emerald-500 bg-slate-800 h-1 cursor-pointer">
+              </div>
+            </div>
+            <button id="btn-generate-synthetic" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition flex items-center justify-center space-x-1.5 rtl:space-x-reverse">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+              <span data-i18n="btn_gen_scene">توليد مشهد بلوت عشوائي</span>
+            </button>
+          </div>
+
+          <!-- Tag / Box Class Editor -->
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+            <div class="flex justify-between items-center text-xs">
+              <span data-i18n="lbl_active_tag" class="font-medium text-slate-300">الفئة النشطة للوسم</span>
+              <span id="active-tag-display" class="font-mono text-emerald-400 font-bold">Ah</span>
+            </div>
+            <div class="flex gap-2">
+              <select id="select-rank" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200">
+                <option value="A">إكة / Ace (A)</option>
+                <option value="K">شايب / King (K)</option>
+                <option value="Q">بنت / Queen (Q)</option>
+                <option value="J">ولد / Jack (J)</option>
+                <option value="10">عشرة (10)</option>
+                <option value="9">تسعة (9)</option>
+                <option value="8">ثمانية (8)</option>
+                <option value="7">سبعة (7)</option>
+              </select>
+              <select id="select-suit" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200">
+                <option value="h">هاص ♥ (Hearts)</option>
+                <option value="d">ديمن ♦ (Diamonds)</option>
+                <option value="c">كلوف ♣ (Clubs)</option>
+                <option value="s">سبيت ♠ (Spades)</option>
+              </select>
+            </div>
+            <p data-i18n="annotation_tip" class="text-[10px] text-slate-500">اسحب بمؤشر الفأرة على الصورة لرسم أو تعديل مربعات التحديد.</p>
+          </div>
+
+        </div>
+
+        <!-- Viewport Canvas Column -->
+        <div class="lg:col-span-7 flex flex-col space-y-3">
+          <div class="flex items-center justify-between text-xs text-slate-400">
+            <span class="font-semibold text-slate-200 flex items-center space-x-1.5 rtl:space-x-reverse">
+              <i data-lucide="eye" class="w-3.5 h-3.5 text-emerald-400"></i>
+              <span data-i18n="viewport_title">منفذ العرض ومحرر الصناديق التفاعلي</span>
+            </span>
+            <span id="render-time" class="font-mono text-emerald-400">جاهز</span>
+          </div>
+
+          <div class="flex-1 flex items-center justify-center p-3 min-h-[380px] checkerboard rounded-xl overflow-hidden border border-slate-800 relative">
+            <canvas id="scene-canvas" class="max-w-full max-h-[460px] shadow-2xl rounded-lg border border-slate-700/50 cursor-crosshair"></canvas>
+            <div id="loading-overlay" class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm flex flex-col items-center justify-center space-y-3 hidden">
+              <div class="w-8 h-8 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
+              <p data-i18n="loading_tensor" class="text-xs text-slate-300">جاري المعالجة بمسرع WebGPU...</p>
+            </div>
+          </div>
+
+          <div class="flex justify-between items-center pt-1 text-xs">
+            <div class="flex items-center space-x-3 rtl:space-x-reverse">
+              <label class="flex items-center space-x-1.5 rtl:space-x-reverse text-slate-300 cursor-pointer">
+                <input id="show-boxes" type="checkbox" checked class="accent-emerald-500 rounded">
+                <span data-i18n="chk_boxes">مربعات التحديد</span>
+              </label>
+              <label class="flex items-center space-x-1.5 rtl:space-x-reverse text-slate-300 cursor-pointer">
+                <input id="show-hulls" type="checkbox" checked class="accent-emerald-500 rounded">
+                <span data-i18n="chk_hulls">مضلعات الأركان</span>
+              </label>
+            </div>
+            <button id="btn-clear-annotations" data-i18n="btn_clear_boxes" class="text-slate-400 hover:text-rose-400 transition">مسح الصناديق</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cell 3: High-Accuracy AI Card Detector (WebGPU) -->
+    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 cell-border">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2 rtl:space-x-reverse">
+          <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-800 text-emerald-400 font-semibold">خلية [3]:</span>
+          <h2 data-i18n="cell3_title" class="text-sm font-semibold text-slate-200">كاشف بطاقات البلوت عالي الدقة (استدلال WebGPU)</h2>
+        </div>
+        <button id="btn-run-detect" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 rtl:space-x-reverse shadow-lg shadow-emerald-900/30 transition">
+          <i data-lucide="scan" class="w-3.5 h-3.5"></i>
+          <span data-i18n="btn_run_detection">كشف وتحديد الأوراق عبر WebGPU</span>
+        </button>
+      </div>
+
+      <!-- Sensitivity & Confidence Controls -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+          <div class="flex justify-between text-xs mb-1">
+            <span data-i18n="lbl_conf_thresh" class="text-slate-300">حد الثقة الأدنى (Confidence)</span>
+            <span id="conf-val" class="text-emerald-400 font-mono">0.60</span>
+          </div>
+          <input id="conf-threshold" type="range" min="0.2" max="0.95" step="0.05" value="0.60" class="w-full accent-emerald-500 bg-slate-800 h-1.5 rounded-lg cursor-pointer">
+        </div>
+
+        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+          <div class="flex justify-between text-xs mb-1">
+            <span data-i18n="lbl_iou_thresh" class="text-slate-300">عتبة عدم التكرار (NMS / IoU)</span>
+            <span id="iou-val" class="text-emerald-400 font-mono">0.45</span>
+          </div>
+          <input id="iou-threshold" type="range" min="0.1" max="0.8" step="0.05" value="0.45" class="w-full accent-emerald-500 bg-slate-800 h-1.5 rounded-lg cursor-pointer">
+        </div>
+
+        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
+          <div>
+            <span data-i18n="lbl_detected_count" class="text-slate-400 block text-[11px]">الأوراق المكتشفة</span>
+            <span id="label-count" class="font-bold text-lg text-emerald-400">0</span>
+          </div>
+          <button id="btn-export-zip" class="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs flex items-center space-x-1.5 rtl:space-x-reverse transition">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span data-i18n="btn_export_zip">تصدير حزمة YOLO</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Detection Results Breakdown -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+        <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-2">
+          <span data-i18n="lbl_class_breakdown" class="text-xs font-semibold text-slate-300 block">تفاصيل البطاقات المكتشفة ومستوى الثقة</span>
+          <div id="labels-list" class="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1 text-xs">
+            <span data-i18n="msg_no_detections" class="text-[11px] text-slate-500 italic">اضغط على زر كشف وتحديد الأوراق لتحليل الصورة الحالية.</span>
+          </div>
+        </div>
+
+        <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-1.5">
+          <div class="flex justify-between items-center text-xs font-semibold text-slate-300">
+            <span data-i18n="lbl_yolo_preview">معاينة إحداثيات YOLO (الفئة x y w h)</span>
+            <button id="copy-yolo" class="text-[11px] text-slate-400 hover:text-emerald-400 flex items-center space-x-1 rtl:space-x-reverse">
+              <i data-lucide="copy" class="w-3 h-3"></i>
+              <span data-i18n="btn_copy">نسخ</span>
+            </button>
+          </div>
+          <pre id="yolo-raw" class="font-mono text-[10px] text-emerald-300/90 bg-slate-900 p-2 rounded-lg max-h-28 overflow-y-auto whitespace-pre"># في انتظار الكشف</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cell 4: Bring your own dataset -->
+    <section id="lab-dataset" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 cell-border">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <div class="flex items-center space-x-2 rtl:space-x-reverse">
+          <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-800 text-emerald-400 font-semibold">خلية [4]:</span>
+          <h2 data-lab-i18n="ds_title" class="text-sm font-semibold text-slate-200">مجموعة بياناتك: استيراد وفحص ومطابقة أصناف البلوت</h2>
+        </div>
+        <div id="backend-badge" class="text-[11px] px-2.5 py-1 rounded-full border border-slate-700 bg-slate-800 text-slate-300">
+          <span data-lab-i18n="backend_checking">جارٍ فحص الخادم المحلي…</span>
+        </div>
+      </div>
+
+      <!-- Source selection -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <div class="lg:col-span-2 bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+          <label for="ds-path" data-lab-i18n="ds_path_label" class="block text-xs font-semibold text-slate-300">مسار مجلد البيانات على هذا الجهاز</label>
+          <div class="flex gap-2">
+            <input id="ds-path" type="text" spellcheck="false" placeholder="C:\Users\me\Downloads\playing-cards-object-detection-dataset"
+                   class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-slate-200 placeholder:text-slate-600">
+            <button id="btn-ds-inspect" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition whitespace-nowrap">
+              <span data-lab-i18n="btn_inspect">افحص</span>
+            </button>
+          </div>
+          <p data-lab-i18n="ds_path_hint" class="text-[11px] text-slate-500">يقرأ الخادم المحلي المجلد مباشرة — مناسب لعشرات الآلاف من الصور.</p>
+
+          <div class="border-t border-slate-800 pt-3">
+            <label for="ds-folder" data-lab-i18n="ds_folder_label" class="block text-xs font-semibold text-slate-300 mb-1.5">أو اختر المجلد من المتصفح (بدون خادم)</label>
+            <input id="ds-folder" type="file" webkitdirectory directory multiple
+                   class="block w-full text-[11px] text-slate-400 file:mr-3 file:rtl:ml-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700">
+            <p data-lab-i18n="ds_folder_hint" class="text-[11px] text-slate-500 mt-1">يُقرأ محليًا في المتصفح. المجموعات الكبيرة قد تستغرق دقيقة.</p>
+          </div>
+        </div>
+
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
+          <span data-lab-i18n="kaggle_title" class="block text-xs font-semibold text-slate-300">لا توجد بيانات؟ ابدأ بمجموعة كاجل</span>
+          <p data-lab-i18n="kaggle_hint" class="text-[11px] text-slate-500 leading-relaxed">مجموعة أوراق اللعب (٥٢ صنفًا) — يحوّلها حكيم إلى ٣٢ صنف بلوت في الخطوة التالية.</p>
+          <pre id="kaggle-cmd" class="font-mono text-[10px] text-emerald-300/90 bg-slate-900 border border-slate-800 p-2 rounded-lg overflow-x-auto whitespace-pre" dir="ltr">curl -L -o ~/Downloads/playing-cards.zip \
+  https://www.kaggle.com/api/v1/datasets/download/andy8744/playing-cards-object-detection-dataset</pre>
+          <button id="btn-copy-kaggle" class="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-[11px] font-semibold transition">
+            <span data-lab-i18n="btn_copy_cmd">انسخ الأمر</span>
+          </button>
+          <p data-lab-i18n="kaggle_auth" class="text-[10px] text-slate-600 leading-relaxed">يتطلب تسجيل الدخول في كاجل (kaggle.json). فك ضغط الملف ثم ضع مسار المجلد في الحقل المجاور.</p>
+        </div>
+      </div>
+
+      <!-- Progress / errors -->
+      <div id="ds-status" class="hidden text-xs px-3 py-2 rounded-lg border"></div>
+
+      <!-- Report -->
+      <div id="ds-report" class="hidden space-y-4">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <span data-lab-i18n="stat_images" class="text-slate-400 block text-[11px]">الصور</span>
+            <span id="stat-images" class="font-bold text-lg text-emerald-400 font-mono">0</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <span data-lab-i18n="stat_boxes" class="text-slate-400 block text-[11px]">الصناديق</span>
+            <span id="stat-boxes" class="font-bold text-lg text-emerald-400 font-mono">0</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <span data-lab-i18n="stat_classes" class="text-slate-400 block text-[11px]">الأصناف الموجودة</span>
+            <span id="stat-classes" class="font-bold text-lg text-emerald-400 font-mono">0</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <span data-lab-i18n="stat_baloot" class="text-slate-400 block text-[11px]">تُطابق البلوت</span>
+            <span id="stat-baloot" class="font-bold text-lg text-emerald-400 font-mono">0 / 32</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <span data-lab-i18n="splits_title" class="text-xs font-semibold text-slate-300 block mb-2">التقسيمات</span>
+            <table class="w-full text-xs">
+              <thead class="text-[11px] text-slate-500">
+                <tr>
+                  <th data-lab-i18n="th_split" class="text-start font-semibold py-1">التقسيم</th>
+                  <th data-lab-i18n="th_images" class="text-start font-semibold py-1">صور</th>
+                  <th data-lab-i18n="th_labelled" class="text-start font-semibold py-1">موسومة</th>
+                  <th data-lab-i18n="th_boxes" class="text-end font-semibold py-1">صناديق</th>
+                </tr>
+              </thead>
+              <tbody id="splits-body" class="divide-y divide-slate-800/70"></tbody>
+            </table>
+            <div id="issues-list" class="mt-3 space-y-1.5"></div>
+          </div>
+
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col">
+            <span data-lab-i18n="hist_title" class="text-xs font-semibold text-slate-300 mb-2">توزيع الصناديق على الأصناف</span>
+            <div class="flex-1 min-h-[190px]">
+              <canvas id="class-histogram"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Class mapping -->
+        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <span data-lab-i18n="map_title" class="text-xs font-semibold text-slate-300">مطابقة الأصناف مع صكة البلوت (٣٢ ورقة)</span>
+            <div class="flex gap-2">
+              <button id="btn-map-suggest" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-[11px] font-semibold transition">
+                <span data-lab-i18n="btn_apply_suggestions">طبّق الاقتراحات</span>
+              </button>
+              <button id="btn-map-clear" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-[11px] font-semibold transition">
+                <span data-lab-i18n="btn_drop_all">أسقط الكل</span>
+              </button>
+            </div>
+          </div>
+          <div class="max-h-72 overflow-y-auto rounded-lg border border-slate-800">
+            <table class="w-full text-xs">
+              <thead class="sticky top-0 bg-slate-900 text-[11px] text-slate-400">
+                <tr>
+                  <th data-lab-i18n="th_source" class="text-start font-semibold px-2 py-1.5">صنف المصدر</th>
+                  <th data-lab-i18n="th_count" class="text-start font-semibold px-2 py-1.5">صناديق</th>
+                  <th data-lab-i18n="th_target" class="text-start font-semibold px-2 py-1.5">صنف البلوت</th>
+                  <th data-lab-i18n="th_reason" class="text-start font-semibold px-2 py-1.5">السبب</th>
+                </tr>
+              </thead>
+              <tbody id="mapping-body" class="divide-y divide-slate-800/70"></tbody>
+            </table>
+          </div>
+          <p id="mapping-summary" class="text-[11px] text-slate-500"></p>
+        </div>
+
+        <!-- Build the Baloot dataset -->
+        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+          <label for="ds-output" data-lab-i18n="out_label" class="block text-xs font-semibold text-slate-300">مجلد الإخراج لنسخة البلوت</label>
+          <div class="flex gap-2">
+            <input id="ds-output" type="text" spellcheck="false" value="data/baloot-dataset"
+                   class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-slate-200">
+            <button id="btn-ds-remap" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed">
+              <span data-lab-i18n="btn_build">جهّز نسخة البلوت</span>
+            </button>
+          </div>
+          <p id="remap-hint" data-lab-i18n="out_hint" class="text-[11px] text-slate-500">تُكتب الصور بروابط صلبة عند الإمكان، فلا تتضاعف المساحة.</p>
+          <pre id="remap-cli" class="hidden font-mono text-[10px] text-emerald-300/90 bg-slate-900 border border-slate-800 p-2 rounded-lg overflow-x-auto whitespace-pre" dir="ltr"></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cell 5: Training -->
+    <section id="lab-train" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 cell-border">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <div class="flex items-center space-x-2 rtl:space-x-reverse">
+          <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-800 text-emerald-400 font-semibold">خلية [5]:</span>
+          <h2 data-lab-i18n="train_title" class="text-sm font-semibold text-slate-200">تدريب كاشف أوراق البلوت</h2>
+        </div>
+        <div class="flex gap-2">
+          <button id="btn-train-stop" class="hidden px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 rounded-xl text-xs font-semibold transition">
+            <span data-lab-i18n="btn_stop">أوقف</span>
+          </button>
+          <button id="btn-train-start" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-900/30 transition disabled:opacity-40 disabled:cursor-not-allowed">
+            <span id="train-start-label" data-lab-i18n="btn_train">ابدأ التدريب</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div class="lg:col-span-4 space-y-3">
+          <div>
+            <label for="train-data" data-lab-i18n="lbl_data_yaml" class="block text-xs font-medium text-slate-300 mb-1">ملف data.yaml</label>
+            <input id="train-data" type="text" spellcheck="false" placeholder="data/baloot-dataset/data.yaml"
+                   class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-xs font-mono text-slate-200">
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label for="train-model" data-lab-i18n="lbl_model" class="block text-xs font-medium text-slate-300 mb-1">النموذج الأساس</label>
+              <select id="train-model" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"></select>
+            </div>
+            <div>
+              <label for="train-device" data-lab-i18n="lbl_device" class="block text-xs font-medium text-slate-300 mb-1">الجهاز</label>
+              <select id="train-device" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200">
+                <option value="" data-lab-i18n="device_auto">تلقائي</option>
+                <option value="0">GPU 0</option>
+                <option value="cpu">CPU</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label for="train-epochs" data-lab-i18n="lbl_epochs" class="block text-xs font-medium text-slate-300 mb-1">الحقب</label>
+              <input id="train-epochs" type="number" min="1" max="1000" value="50" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 font-mono">
+            </div>
+            <div>
+              <label for="train-imgsz" data-lab-i18n="lbl_imgsz" class="block text-xs font-medium text-slate-300 mb-1">حجم الصورة</label>
+              <input id="train-imgsz" type="number" min="64" max="1920" step="32" value="640" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 font-mono">
+            </div>
+            <div>
+              <label for="train-batch" data-lab-i18n="lbl_batch" class="block text-xs font-medium text-slate-300 mb-1">الدفعة</label>
+              <input id="train-batch" type="number" min="1" max="256" value="16" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 font-mono">
+            </div>
+          </div>
+
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5 text-xs">
+            <div class="flex justify-between">
+              <span data-lab-i18n="lbl_status" class="text-slate-400">الحالة:</span>
+              <span id="train-status" data-lab-i18n="status_idle" class="font-semibold text-slate-300">في الانتظار</span>
+            </div>
+            <div class="flex justify-between">
+              <span data-lab-i18n="lbl_epoch" class="text-slate-400">الحقبة:</span>
+              <span id="train-epoch" class="font-semibold text-emerald-400 font-mono">—</span>
+            </div>
+            <div class="flex justify-between">
+              <span data-lab-i18n="lbl_map" class="text-slate-400">mAP@50:</span>
+              <span id="train-map" class="font-semibold text-emerald-400 font-mono">—</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-2 mt-2 overflow-hidden">
+              <div id="train-progress" class="bg-emerald-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
+            <div class="flex justify-between items-center">
+              <span data-lab-i18n="lbl_cli" class="text-[11px] font-semibold text-slate-300">نفس الأمر من الطرفية</span>
+              <button id="btn-copy-train-cli" class="text-[11px] text-slate-400 hover:text-emerald-400">
+                <span data-lab-i18n="btn_copy_cmd">انسخ الأمر</span>
+              </button>
+            </div>
+            <pre id="train-cli" class="font-mono text-[10px] text-emerald-300/90 bg-slate-900 p-2 rounded-lg overflow-x-auto whitespace-pre" dir="ltr"></pre>
+          </div>
+        </div>
+
+        <div class="lg:col-span-8 space-y-3 flex flex-col">
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col">
+            <span data-lab-i18n="chart_title" class="text-xs font-semibold text-slate-300 mb-2">منحنى الخسارة والدقة (من results.csv الفعلي)</span>
+            <div class="flex-1 min-h-[200px]">
+              <canvas id="training-chart"></canvas>
+            </div>
+          </div>
+          <div class="bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+            <div class="px-3 py-1.5 border-b border-slate-800 text-[11px] font-semibold text-slate-300">
+              <span data-lab-i18n="log_title">سجل التشغيل</span>
+            </div>
+            <pre id="train-log" class="font-mono text-[10px] leading-relaxed text-slate-400 p-3 h-40 overflow-y-auto whitespace-pre-wrap" dir="ltr"></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cell 6: Export -->
+    <section id="lab-export" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3 cell-border">
+      <div class="flex items-center space-x-2 rtl:space-x-reverse">
+        <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-800 text-emerald-400 font-semibold">خلية [6]:</span>
+        <h2 data-lab-i18n="export_title" class="text-sm font-semibold text-slate-200">تصدير النموذج للمتصفح (ONNX)</h2>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <div class="lg:col-span-2 flex gap-2">
+          <input id="export-weights" type="text" spellcheck="false" placeholder="runs/baloot/weights/best.pt"
+                 class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-slate-200 placeholder:text-slate-600">
+          <button id="btn-export" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed">
+            <span data-lab-i18n="btn_export">صدّر ONNX</span>
+          </button>
+        </div>
+        <p data-lab-i18n="export_hint" class="text-[11px] text-slate-500 leading-relaxed self-center">
+          بعد التصدير، صِل النموذج بحاسبة اليد عبر HakimDetector.registerClassifier فتتعرّف على الأوراق تلقائيًا.
+        </p>
+      </div>
+      <pre id="export-log" class="hidden font-mono text-[10px] text-slate-400 bg-slate-950 border border-slate-800 p-2 rounded-lg max-h-32 overflow-y-auto whitespace-pre-wrap" dir="ltr"></pre>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer data-i18n="footer_text" class="border-t border-slate-800 bg-slate-950 py-4 text-center text-xs text-slate-500">
+    استوديو حكيم للرؤية الحاسوبية • منصة مفتوحة المصدر للذكاء الاصطناعي في لعبة البلوت السعودي • ترخيص MIT
+  </footer>
+
+  <script src="detect.js"></script>
+  <script src="studio.js"></script>
+  <script src="lab.js"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>
