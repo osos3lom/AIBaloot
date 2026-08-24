@@ -796,6 +796,7 @@ dependencies = [
 dev = [
     { name = "hypothesis" },
     { name = "mypy" },
+    { name = "onnx" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -821,6 +822,7 @@ requires-dist = [
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.11" },
     { name = "nbstripout", marker = "extra == 'notebooks'", specifier = ">=0.7" },
     { name = "numpy", specifier = ">=2.0,<3.0" },
+    { name = "onnx", marker = "extra == 'dev'", specifier = ">=1.16.0" },
     { name = "onnx", marker = "extra == 'train'", specifier = ">=1.16.0" },
     { name = "onnxruntime", marker = "extra == 'train'", specifier = ">=1.18.0" },
     { name = "opencv-python", specifier = ">=4.10,<5.0" },

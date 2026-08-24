@@ -37,6 +37,10 @@ dev = [
     "pytest-xdist>=3.6",
     "hypothesis>=6.112",
     "pre-commit>=3.8",
+    # Graph-surgery tests (the fp16 guard and the decode-tail exclusion) only need
+    # onnx itself, not the training stack. Keeping it here means CI actually runs
+    # them; the full `train` extra pulls torch and would triple every job.
+    "onnx>=1.16.0",
 ]
 train = [
     "ultralytics>=8.3,<9.0",
@@ -137,6 +141,18 @@ module = [
     "onnxruntime.*",
 ]
 ignore_missing_imports = true
+
+# `from ultralytics import YOLO` needs an attr-defined ignore when ultralytics is
+# installed (it does not re-export YOLO in __all__), but the same ignore reads as
+# unused when it is absent and the module resolves to Any - which is exactly the
+# case in CI, where only the `dev` extra is installed. Scope the check off for the
+# two modules that import it lazily rather than weakening it repo-wide.
+[[tool.mypy.overrides]]
+module = [
+    "hakim_vision.models.train",
+    "hakim_vision.models.yolo_export",
+]
+warn_unused_ignores = false
 
 # ---------------------------------------------------------------------------
 # Pytest

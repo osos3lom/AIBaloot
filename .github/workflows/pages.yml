@@ -40,12 +40,19 @@ jobs:
         run: |
           mkdir -p _site
           cp -r web/. _site/
-          # Local test photos and any stray build output never ship.
-          rm -rf _site/samples _site/test-photos
+          # Local test photos, unit tests, and any stray build output never ship.
+          # An unmatched glob passes through literally, and `rm -rf` on a path that
+          # does not exist is a no-op, so this stays safe if a file is ever renamed.
+          rm -rf _site/samples _site/test-photos _site/*.test.js
           # Pages serves 404.html for unknown paths; send those to the app.
           cp web/index.html _site/404.html
 
+      # `enablement` lets this workflow turn Pages on itself the first time it runs.
+      # Without it the step fails with "Get Pages site failed" on a repo where Pages
+      # has never been configured, and the deploy job is skipped.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
