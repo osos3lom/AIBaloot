@@ -38,6 +38,9 @@
 
 يتيح لك النظام تصوير أوراق اللعب بكاميرا الجوال أو المتصفح، والتعرف عليها فوريًا عبر نموذج **YOLO11** فائق الدقة، مع حساب قيمة يدك بدقة متناهية في نظامي **الصن** و **الحكم** ومشاريع اللعب (سرا، خمسين، مية، أربعمية، بلوت)، وكل ذلك **داخل المتصفح وبشكل محلي 100%** دون إرسال صورك لأي خادم سحابي بفضل تقنيات تسريع الرسوميات **WebGPU** و **WebAssembly**.
 
+> 🌐 **رابط التطبيق المباشر (Live Web App)**: يمكنك تجربة الكاشف اللحظي وحاسبة نقاط البلوت مباشرة عبر الرابط:  
+> 👉 [https://osos3lom.github.io/AIBaloot](https://osos3lom.github.io/AIBaloot)
+
 ---
 
 ## 📸 معرض الواجهات والشاشات التفاعلية
@@ -226,6 +229,18 @@ AIBaloot/
 │   │   ├── sun_scoring_calculator.png
 │   │   ├── hokom_scoring_calculator.png
 │   │   ├── studio_cell1_cell2.png
+│   │   ├── studio_cell3_cell4.png
+│   │   └── studio_cell5_cell6.png
+│   ├── detector_pipeline.md  # معمارية YOLO11 ومواصفات WebGPU
+│   └── migration.md          # توثيق تحديث الكود من الدفاتر القديمة
+├── src/hakim_vision/         # حزمة بايثون المكتوبة ومختبرة بالكامل
+│   ├── cli.py                # واجهة سطر الأوامر الموحدة (`hakim-vision`)
+│   ├── config.py             # إعدادات Pydantic
+│   ├── geometry.py           # تحويل الإحداثيات وحساب تقاطع الصناديق IoU
+│   ├── datasets/             # اكتشاف وفحص وإزالة تكرار البيانات
+│   ├── models/               # التدريب، تصدير ONNX، تكميم INT8، وفحص التكافؤ
+│   ├── server.py             # خادم API المحلي للاستوديو
+│   └── synthetic/            # مولد المشاهد التركيبية ومحزم الشظايا
 ├── web/                      # Zero-install client-side Web application
 │   ├── index.html            # Player app: Camera photo -> WebGPU YOLO -> Baloot value
 │   ├── studio.html           # Interactive Dataset Studio & Model Workbench
@@ -235,14 +250,56 @@ AIBaloot/
 │   ├── scoring.test.js       # Scoring test suite (node --test)
 │   ├── models/               # Model weights & Model Card
 │   └── runtime/              # Self-hosted ONNX Runtime WebGPU binaries
-├── tests/                    # Comprehensive unit & integration tests
-├── .github/workflows/        # CI, GitHub Pages, and Release pipelines
-└── pyproject.toml            # Modern packaging & tool definitions
+├── tests/                    # 100 اختبار شامل بنسبة نجاح 100%
+├── .github/workflows/        # خطوط أنابيب CI وبناء Pages والإصدارات
+├── Dockerfile                # حاوية تشغيل الإنتاج متعددة المراحل
+└── pyproject.toml            # تعريف الحزم وأدوات التطوير الحديثة
 ```
 
 ---
 
-## 📖 Documentation & References
+<hr id="english-documentation">
+
+<div align="center">
+
+## 🇬🇧 English Documentation
+
+<p align="center">
+  <a href="#-hakim-vision--استوديو-حكيم-للرؤية-الحاسوبية"><strong>⬆️ العودة للبداية (اللغة العربية) / Back to Top</strong></a>
+</p>
+
+</div>
+
+### Overview
+**hakim-vision** is the state-of-the-art computer-vision and edge AI pillar of the **Hakim** open-source Saudi Baloot platform. It enables zero-install, real-time playing card detection from camera photos directly within the browser using a customized **YOLO11** detector running on **WebGPU (FP16)** and **WASM (INT8)**, coupled with an authoritative Baloot scoring arithmetic engine for Sun (صن) and Hokum (حكم).
+
+> 🌐 **Live Web Application**: Experience the in-browser real-time card detector and valuation engine at:  
+> 👉 [https://osos3lom.github.io/AIBaloot](https://osos3lom.github.io/AIBaloot)
+
+### Key Architectural Highlights
+- **100% Client-Side Privacy**: Neural network tensor inference executes locally on device graphics shaders (`onnxruntime-web`). No video streams or photos are sent to remote servers.
+- **33-Class Baloot Ontology**: Specialized for Saudi Baloot's 32-card deck (8 Ranks $\times$ 4 Suits) + 1 `other` class for 52-card poker compatibility.
+- **Authoritative Scoring**: Pure JavaScript valuation engine covering trick score arithmetic (Sun 120 pts, Hokum 152 pts) and project declarations (Sira, 50, 100, 400, Baloot).
+- **Data Engineering CLI**: Modular Python toolchain for dataset inspection, perceptual dHash deduplication, class remapping, YOLO11 training, FP16 ONNX export, and static INT8 calibration.
+
+### Quick Start (English)
+```bash
+# 1. Sync dependencies with uv
+uv sync --all-extras
+
+# 2. Launch the WebGPU Studio locally
+uv run hakim-vision studio
+
+# 3. Run full test suite & linters
+uv run pytest -q
+uv run mypy
+uv run ruff check .
+node --test web/scoring.test.js
+```
+
+---
+
+## 📖 التوثيق والمراجع | Documentation
 
 - 📘 **[Architecture & Pipeline Guide](docs/detector_pipeline.md)**: Deep dive into YOLO11 training, stretch preprocessing, quantization, and WebGPU shaders.
 - 🃏 **[Model Card (v1.0.0)](web/models/model-card.md)**: Accuracy metrics, mAP@50 benchmarks, and runtime latency measurements.
@@ -250,17 +307,16 @@ AIBaloot/
 
 ---
 
-## 🤝 Contributing
+## 🤝 المساهمة | Contributing
 
-Contributions, issues, and feature requests are welcome!
-- Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) to set up your local environment.
-- For security vulnerabilities, refer to [`SECURITY.md`](SECURITY.md).
+نرحب بجميع المساهمات والاقتراحات البرمجية!
+- يرجى مراجعة [`CONTRIBUTING.md`](CONTRIBUTING.md) لإعداد بيئة التطوير.
+- للإبلاغ عن الثغرات الأمنية، يرجى مراجعة [`SECURITY.md`](SECURITY.md).
 
 ---
 
-## 📄 License
+## 📄 الترخيص | License
 
-This project is licensed under the [MIT License](LICENSE).
+هذا المشروع مرخص بموجب رخصة [MIT License](LICENSE).
 <br>
-Crafted with ❤️ for the open-source Baloot & AI community.
-
+صُنع بكل ❤️ لدعم مجتمع الذكاء الاصطناعي ولعبة البلوت السعودي المفتوحة المصدر.
