@@ -47,12 +47,8 @@ jobs:
           # Pages serves 404.html for unknown paths; send those to the app.
           cp web/index.html _site/404.html
 
-      # `enablement` lets this workflow turn Pages on itself the first time it runs.
-      # Without it the step fails with "Get Pages site failed" on a repo where Pages
-      # has never been configured, and the deploy job is skipped.
+      # Configure Pages metadata (Source must be set to "GitHub Actions" in repo Settings -> Pages)
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
