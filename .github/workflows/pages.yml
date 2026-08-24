@@ -1,0 +1,63 @@
+name: Deploy web surfaces to Pages
+
+# Publishes web/ — the hand-value app and the dataset studio — as a static site.
+# Both pages are dependency-free; the studio's training controls simply report
+# that no local job API is present, which is exactly true on Pages.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "web/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; never cancel a run that is mid-publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify the scoring engine before publishing
+        run: node --test web/scoring.test.js web/sw.test.js
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp -r web/. _site/
+          # Local test photos and any stray build output never ship.
+          rm -rf _site/samples _site/test-photos
+          # Pages serves 404.html for unknown paths; send those to the app.
+          cp web/index.html _site/404.html
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

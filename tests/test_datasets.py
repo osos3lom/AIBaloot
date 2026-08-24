@@ -225,7 +225,7 @@ def test_remap_keeps_empty_images_when_asked(tmp_path: Path):
 def test_remap_refuses_a_mapping_that_keeps_nothing(tmp_path: Path):
     root = _roboflow_dataset(tmp_path / "poker", ["Ah"])
     with pytest.raises(ValueError, match="keeps no classes"):
-        remap_dataset(root, tmp_path / "out", {"Ah": None})
+        remap_dataset(root, tmp_path / "out", {"Ah": None}, unmapped="drop")
 
 
 def test_remap_mapping_round_trips_through_json(tmp_path: Path):
@@ -234,5 +234,119 @@ def test_remap_mapping_round_trips_through_json(tmp_path: Path):
     mapping = {item.source_name: item.target for item in suggest_mapping(report.class_names)}
 
     serialised = json.loads(json.dumps(mapping))
-    result = remap_dataset(root, tmp_path / "out", serialised, link_mode="copy")
+    result = remap_dataset(root, tmp_path / "out", serialised, link_mode="copy", unmapped="other")
     assert result.images_written > 0
+
+
+def test_remap_unmapped_other_mode(tmp_path: Path):
+    root = _roboflow_dataset(tmp_path / "poker", ["Ah", "2c", "3d"])
+    output = tmp_path / "baloot"
+    result = remap_dataset(
+        root, output, {"Ah": "Ah", "2c": None, "3d": None}, link_mode="copy", unmapped="other"
+    )
+
+    assert result.data_yaml.is_file()
+    yaml_text = result.data_yaml.read_text(encoding="utf-8")
+    assert "32: other" in yaml_text
+
+    # Check that labels contain 0 (for Ah) and 32 (for other)
+    target_ids = set()
+    for label_file in (output / "labels" / "train").glob("*.txt"):
+        for line in label_file.read_text(encoding="utf-8").splitlines():
+            target_ids.add(line.split()[0])
+    assert "0" in target_ids
+    assert "32" in target_ids
+
+
+def test_remap_box_hygiene_filters_tiny_boxes_and_clips(tmp_path: Path):
+    root = tmp_path / "raw"
+    _write(root / "data.yaml", "train: train/images\nval: train/images\nnames: ['Ah']\n")
+    _write(root / "train" / "images" / "test.jpg", "x")
+    # 1 normal box, 1 tiny box (< 6/416 = 0.0144), 1 out-of-bounds box to clip, 1 zero-width box
+    _write(
+        root / "train" / "labels" / "test.txt",
+        "0 0.5 0.5 0.2 0.2\n0 0.5 0.5 0.005 0.005\n0 1.05 -0.05 0.3 0.3\n0 0.5 0.5 0.0 0.2\n",
+    )
+
+    output = tmp_path / "clean"
+    remap_dataset(root, output, {"Ah": "Ah"}, link_mode="copy", min_box_pixels=6.0, imgsz=416)
+
+    lines = (output / "labels" / "train" / "test.txt").read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 2  # normal box and clipped box (tiny and zero-width dropped)
+
+    # Verify clipped box coordinates stay within [0, 1]
+    clipped_parts = lines[1].split()
+    cx, cy = float(clipped_parts[1]), float(clipped_parts[2])
+    assert 0.0 <= cx <= 1.0
+    assert 0.0 <= cy <= 1.0
+
+
+def test_preview_dataset(tmp_path: Path):
+    import cv2
+    import numpy as np
+
+    from hakim_vision.datasets.preview import preview_dataset
+
+    root = tmp_path / "cards"
+    img_dir = root / "images" / "train"
+    lbl_dir = root / "labels" / "train"
+    img_dir.mkdir(parents=True)
+    lbl_dir.mkdir(parents=True)
+
+    dummy_img = np.zeros((100, 100, 3), dtype=np.uint8)
+    cv2.imwrite(str(img_dir / "c1.jpg"), dummy_img)
+    (lbl_dir / "c1.txt").write_text("0 0.5 0.5 0.2 0.2\n32 0.8 0.8 0.1 0.1\n", encoding="utf-8")
+    _write(root / "data.yaml", "train: images/train\nnames: {0: 'Ah', 32: 'other'}\n")
+
+    out_dir = tmp_path / "previews"
+    rendered = preview_dataset(root, out_dir, count=1)
+    assert len(rendered) == 1
+    assert rendered[0].is_file()
+
+
+def test_dedupe_scan_and_prune(tmp_path: Path):
+    import cv2
+    import numpy as np
+
+    from hakim_vision.datasets.dedupe import (
+        compute_dhash,
+        hamming_distance,
+        prune_leaked_images,
+        scan_dataset_duplicates,
+    )
+
+    root = tmp_path / "ds"
+    train_dir = root / "train" / "images"
+    val_dir = root / "valid" / "images"
+    train_lbl = root / "train" / "labels"
+    val_lbl = root / "valid" / "labels"
+    for d in (train_dir, val_dir, train_lbl, val_lbl):
+        d.mkdir(parents=True)
+
+    _write(root / "data.yaml", "train: train/images\nval: valid/images\nnames: ['Ah']\n")
+
+    # Create two identical images (one in train, one in valid)
+    img1 = np.full((100, 100, 3), 128, dtype=np.uint8)
+    img1[20:50, 20:50] = 255
+    cv2.imwrite(str(train_dir / "card1.jpg"), img1)
+    (train_lbl / "card1.txt").write_text("0 0.5 0.5 0.2 0.2\n", encoding="utf-8")
+
+    cv2.imwrite(str(val_dir / "card1_leak.jpg"), img1)
+    (val_lbl / "card1_leak.txt").write_text("0 0.5 0.5 0.2 0.2\n", encoding="utf-8")
+
+    # Compute dHash
+    h1 = compute_dhash(train_dir / "card1.jpg")
+    h2 = compute_dhash(val_dir / "card1_leak.jpg")
+    assert hamming_distance(h1, h2) == 0
+
+    # Scan duplicates
+    report = scan_dataset_duplicates(root, threshold=2)
+    assert len(report.cross_split_leaks) == 1
+    assert len(report.leaked_eval_images) == 1
+
+    # Prune leaks
+    pruned = prune_leaked_images(report, dry_run=False)
+    assert len(pruned) == 1
+    assert not (val_dir / "card1_leak.jpg").exists()
+    assert not (val_lbl / "card1_leak.txt").exists()
+    assert (train_dir / "card1.jpg").exists()

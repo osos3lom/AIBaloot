@@ -56,6 +56,19 @@ class StudioContext:
         return any(resolved.is_relative_to(root) for root in self.allowed_roots)
 
 
+def default_web_dir() -> Path:
+    """Locate the browser surfaces: packaged copy first, then a source checkout."""
+    packaged = Path(__file__).resolve().parent / "web"
+    if (packaged / "index.html").is_file():
+        return packaged
+    checkout = Path(__file__).resolve().parents[2] / "web"
+    if (checkout / "index.html").is_file():
+        return checkout
+    raise FileNotFoundError(
+        "Could not find the web/ directory. Reinstall the package, or run from a checkout."
+    )
+
+
 def _environment_status() -> dict[str, object]:
     """Report what is actually installed, without importing torch eagerly."""
     import importlib.util
@@ -104,6 +117,11 @@ class StudioHandler(SimpleHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        if status >= HTTPStatus.BAD_REQUEST:
+            # Keep-alive after an error risks a desynchronised stream if any of
+            # the request body went unread; close instead of guessing.
+            self.send_header("Connection", "close")
+            self.close_connection = True
         self.end_headers()
         self.wfile.write(body)
 
@@ -167,14 +185,17 @@ class StudioHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self) -> None:
         route = urlparse(self.path)
-        if not self._authorised():
-            self._error("Invalid or missing studio token.", HTTPStatus.FORBIDDEN)
-            return
 
+        # Consume the body first: rejecting a request without draining it would
+        # leave bytes in the socket that the next request would misread.
         try:
             payload = self._read_json()
         except (ValueError, json.JSONDecodeError) as error:
             self._error(f"Bad request body: {error}")
+            return
+
+        if not self._authorised():
+            self._error("Invalid or missing studio token.", HTTPStatus.FORBIDDEN)
             return
 
         try:
@@ -371,4 +392,11 @@ def create_server(
     return server, context
 
 
-__all__ = ["MAX_BODY_BYTES", "TOKEN_HEADER", "StudioContext", "StudioHandler", "create_server"]
+__all__ = [
+    "MAX_BODY_BYTES",
+    "TOKEN_HEADER",
+    "StudioContext",
+    "StudioHandler",
+    "create_server",
+    "default_web_dir",
+]

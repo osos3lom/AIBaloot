@@ -1,4 +1,4 @@
-.PHONY: help install sync lock lint format type test test-fast cov check pre-commit docker docker-run clean
+.PHONY: help install sync lock lint format type test test-fast cov check pre-commit clean
 
 UV ?= uv
 
@@ -36,12 +36,6 @@ check: lint type test  ## Full local CI gate
 pre-commit:  ## Install + run all pre-commit hooks
 	$(UV) run pre-commit install
 	$(UV) run pre-commit run --all-files
-
-docker:  ## Build the runtime container
-	docker build -t hakim-vision:dev .
-
-docker-run: docker  ## Build then run --help in the container
-	docker run --rm hakim-vision:dev hakim-vision --help
 
 clean:  ## Remove caches and build artifacts
 	rm -rf .mypy_cache .ruff_cache .pytest_cache build dist *.egg-info coverage.xml htmlcov .coverage

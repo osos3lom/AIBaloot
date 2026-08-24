@@ -16,10 +16,18 @@ from rich.table import Table
 
 from hakim_vision import __version__
 from hakim_vision.config import GenerationConfig
-from hakim_vision.datasets import discover_layout, inspect_dataset, remap_dataset, suggest_mapping
+from hakim_vision.datasets import (
+    discover_layout,
+    inspect_dataset,
+    preview_dataset,
+    prune_leaked_images,
+    remap_dataset,
+    scan_dataset_duplicates,
+    suggest_mapping,
+)
 from hakim_vision.models.train import SUPPORTED_MODELS, TrainingConfig, train_detector
 from hakim_vision.models.yolo_export import export_yolo_to_onnx
-from hakim_vision.server import create_server
+from hakim_vision.server import create_server, default_web_dir
 from hakim_vision.synthetic.assets import Backgrounds, Cards
 from hakim_vision.synthetic.pack import pack_backgrounds, pack_cards
 from hakim_vision.synthetic.scene import render_random_scene, write_yolo_label
@@ -198,6 +206,66 @@ def cmd_dataset_inspect(
         console.print("[green]No label problems found.[/]")
 
 
+@dataset_app.command("preview")
+def cmd_dataset_preview(
+    source: Path = typer.Option(..., "--source", "-s", help="Dataset root directory."),
+    output: Path = typer.Option(
+        Path("data/preview"), "--output", "-o", help="Directory to save preview images."
+    ),
+    count: int = typer.Option(
+        16, "--count", "-n", min=1, help="Number of sample images to preview."
+    ),
+    seed: int = typer.Option(42, "--seed", help="Random seed for sample selection."),
+    split: str | None = typer.Option(
+        None, "--split", help="Specific split (e.g. train, valid, test)."
+    ),
+) -> None:
+    """Render sample dataset images with bounding boxes and class labels for visual review."""
+    rendered = preview_dataset(source, output, count=count, seed=seed, split_name=split)
+    console.print(f"[green]Saved {len(rendered)} preview images to:[/] {output}")
+
+
+@dataset_app.command("dedupe")
+def cmd_dataset_dedupe(
+    source: Path = typer.Option(..., "--source", "-s", help="Dataset root directory."),
+    threshold: int = typer.Option(
+        4,
+        "--threshold",
+        "-t",
+        min=0,
+        max=64,
+        help="Hamming distance threshold for near-duplicates.",
+    ),
+    drop_leaks: bool = typer.Option(
+        False, "--drop-leaks", help="Prune leaked eval images (in valid/test matching train)."
+    ),
+    as_json: bool = typer.Option(False, "--json", help="Print the report as JSON."),
+) -> None:
+    """Detect and optionally prune near-duplicate images across dataset splits using dHash."""
+    layout = discover_layout(source)
+    report = scan_dataset_duplicates(layout.root, threshold=threshold, layout=layout)
+
+    if as_json:
+        console.print_json(data=report.to_dict())
+        return
+
+    console.print(f"[bold]{report.root}[/]")
+    console.print(
+        f"Scanned {report.total_scanned} images with dHash threshold <= {report.threshold}"
+    )
+    console.print(f"Intra-split near-duplicates: {len(report.intra_split_matches)}")
+    console.print(f"Cross-split near-duplicates: {len(report.cross_split_leaks)}")
+    console.print(
+        f"Leaked eval images (in valid/test matching train): {len(report.leaked_eval_images)}"
+    )
+
+    if drop_leaks:
+        pruned = prune_leaked_images(report, layout=layout, dry_run=False)
+        console.print(f"[green]Pruned {len(pruned)} leaked images from eval splits.[/]")
+    elif report.leaked_eval_images:
+        console.print("[yellow]Pass --drop-leaks to remove leaked images from valid/test.[/]")
+
+
 @dataset_app.command("remap")
 def cmd_dataset_remap(
     source: Path = typer.Option(..., "--source", "-s", help="Dataset root directory."),
@@ -210,11 +278,14 @@ def cmd_dataset_remap(
     link_mode: str = typer.Option(
         "auto", "--link-mode", help="auto | link | copy — how images enter the new dataset."
     ),
+    unmapped: str = typer.Option(
+        "other", "--unmapped", help="other | drop — how non-Baloot cards (2-6) are handled."
+    ),
     keep_empty: bool = typer.Option(
         False, "--keep-empty", help="Keep images whose boxes were all dropped."
     ),
 ) -> None:
-    """Write a 32-class Baloot dataset from a 52-card source dataset."""
+    """Write a 33-class (or 32-class) Baloot dataset from a 52-card source dataset."""
     layout = discover_layout(source)
     report = inspect_dataset(layout.root, layout=layout)
 
@@ -224,10 +295,16 @@ def cmd_dataset_remap(
         table = {item.source_name: item.target for item in suggest_mapping(report.class_names)}
 
     kept = sum(1 for value in table.values() if value)
-    console.print(f"Remapping {kept} of {len(report.class_names)} classes -> {output}")
+    console.print(f"Remapping {kept} Baloot classes (unmapped mode: '{unmapped}') -> {output}")
 
     result = remap_dataset(
-        layout.root, output, table, layout=layout, link_mode=link_mode, drop_empty=not keep_empty
+        layout.root,
+        output,
+        table,
+        layout=layout,
+        link_mode=link_mode,
+        drop_empty=not keep_empty,
+        unmapped=unmapped,
     )
     console.print_json(data=result.to_dict())
     console.print(f"[green]Train with:[/] hakim-vision train --data {result.data_yaml}")
@@ -239,15 +316,35 @@ def cmd_train(
     model: str = typer.Option(
         "yolo11n.pt", "--model", help=f"One of: {', '.join(SUPPORTED_MODELS)}"
     ),
-    epochs: int = typer.Option(50, "--epochs", min=1),
-    imgsz: int = typer.Option(640, "--imgsz", min=64),
-    batch: int = typer.Option(16, "--batch", min=1),
+    epochs: int = typer.Option(120, "--epochs", min=1),
+    imgsz: int = typer.Option(704, "--imgsz", min=64),
+    batch: int = typer.Option(32, "--batch", min=1),
+    workers: int = typer.Option(
+        8, "--workers", min=1, help="Dataloader workers to prevent CPU bottlenecks."
+    ),
+    patience: int = typer.Option(20, "--patience", min=1),
     device: str = typer.Option(
         "", "--device", help="'0' for the first GPU, 'cpu', or blank to auto-detect."
     ),
     project: Path = typer.Option(Path("runs/hakim"), "--project"),
     name: str = typer.Option("baloot", "--name"),
     resume: bool = typer.Option(False, "--resume"),
+    fliplr: float = typer.Option(
+        0.0, "--fliplr", help="Horizontal flip probability (cards should be 0.0)."
+    ),
+    flipud: float = typer.Option(
+        0.0, "--flipud", help="Vertical flip probability (cards should be 0.0)."
+    ),
+    degrees: float = typer.Option(180.0, "--degrees", help="Rotation augmentation in degrees."),
+    cos_lr: bool = typer.Option(
+        True, "--cos-lr/--no-cos-lr", help="Use cosine learning rate schedule."
+    ),
+    close_mosaic: int = typer.Option(
+        10, "--close-mosaic", help="Disable mosaic augmentation for the last N epochs."
+    ),
+    scale: float = typer.Option(0.5, "--scale", help="Scale jitter factor."),
+    amp: bool = typer.Option(True, "--amp/--no-amp", help="Use automatic mixed precision."),
+    half: bool = typer.Option(True, "--half/--no-half", help="Enable FP16 half precision."),
 ) -> None:
     """Fine-tune a card detector on a Baloot-class dataset (needs the `train` extra)."""
     config = TrainingConfig(
@@ -256,17 +353,27 @@ def cmd_train(
         epochs=epochs,
         imgsz=imgsz,
         batch=batch,
+        workers=workers,
+        patience=patience,
         device=device,
         project=project,
         name=name,
         resume=resume,
+        fliplr=fliplr,
+        flipud=flipud,
+        degrees=degrees,
+        cos_lr=cos_lr,
+        close_mosaic=close_mosaic,
+        scale=scale,
+        amp=amp,
+        half=half,
     )
     outcome = train_detector(config)
     console.print_json(data=outcome.to_dict())
     if outcome.best_weights:
         console.print(
             f"[green]Export for the browser with:[/] "
-            f"hakim-vision export --weights {outcome.best_weights}"
+            f"hakim-vision export --weights {outcome.best_weights} --imgsz {imgsz}"
         )
 
 
@@ -274,12 +381,66 @@ def cmd_train(
 def cmd_export(
     weights: Path = typer.Option(..., "--weights", help="Trained .pt checkpoint."),
     output: Path | None = typer.Option(None, "--output", "-o", help="Destination .onnx path."),
-    imgsz: int = typer.Option(640, "--imgsz", min=64),
+    imgsz: int = typer.Option(416, "--imgsz", min=64),
     half: bool = typer.Option(False, "--half", help="Export FP16 weights."),
 ) -> None:
     """Export trained weights to ONNX for the in-browser detector."""
     destination = export_yolo_to_onnx(weights, output, imgsz=imgsz, half=half)
     console.print(f"[green]Wrote[/] {destination}")
+
+
+@app.command("quantize")
+def cmd_quantize(
+    model: Path = typer.Option(..., "--model", "-m", help="Float32 ONNX model to quantize."),
+    output: Path = typer.Option(..., "--output", "-o", help="Destination INT8 ONNX path."),
+    calib_dir: Path = typer.Option(
+        ..., "--calib-dir", "-c", help="Directory containing calibration images."
+    ),
+    imgsz: int = typer.Option(416, "--imgsz", min=64),
+    max_samples: int = typer.Option(200, "--max-samples", min=1),
+) -> None:
+    """Quantize a float32 ONNX model to static INT8 using calibration images."""
+    from hakim_vision.models.quantize import quantize_onnx_static
+
+    calib_images = sorted(
+        [
+            p
+            for p in calib_dir.iterdir()
+            if p.is_file() and p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}
+        ]
+    )[:max_samples]
+    if not calib_images:
+        raise typer.BadParameter(f"No valid calibration images found in {calib_dir}")
+
+    dest = quantize_onnx_static(model, output, calib_images, imgsz=imgsz)
+    console.print(f"[green]Quantized INT8 model written to:[/] {dest}")
+
+
+@app.command("evaluate-parity")
+def cmd_evaluate_parity(
+    model: Path = typer.Option(..., "--model", "-m", help="ONNX model path."),
+    test_images: Path = typer.Option(..., "--images", help="Test images directory."),
+    test_labels: Path = typer.Option(..., "--labels", help="Test labels directory."),
+    imgsz: int = typer.Option(416, "--imgsz", min=64),
+    conf: float = typer.Option(0.25, "--conf", min=0.0, max=1.0),
+    as_json: bool = typer.Option(False, "--json", help="Print result as JSON."),
+) -> None:
+    """Evaluate an ONNX model against holdout test images and labels."""
+    from hakim_vision.models.evaluate_parity import evaluate_onnx_model
+
+    result = evaluate_onnx_model(model, test_images, test_labels, imgsz=imgsz, conf_thresh=conf)
+    if as_json:
+        console.print_json(data=result.to_dict())
+    else:
+        table = Table("Metric", "Value")
+        table.add_row("Model", result.model_name)
+        table.add_row("Precision", f"{result.precision:.4f}")
+        table.add_row("Recall", f"{result.recall:.4f}")
+        table.add_row("mAP@50", f"{result.map50:.4f}")
+        table.add_row("mAP@50-95", f"{result.map50_95:.4f}")
+        table.add_row("Avg Latency", f"{result.avg_latency_ms:.2f} ms")
+        table.add_row("Size", f"{result.model_size_mb:.2f} MB")
+        console.print(table)
 
 
 @app.command("studio")
@@ -295,9 +456,10 @@ def cmd_studio(
     """Serve the hand-value app and the dataset studio, with a local job API."""
     import webbrowser
 
-    web_dir = Path(__file__).resolve().parents[2] / "web"
-    if not web_dir.exists():
-        raise typer.BadParameter(f"Web directory not found at {web_dir}")
+    try:
+        web_dir = default_web_dir()
+    except FileNotFoundError as error:
+        raise typer.BadParameter(str(error)) from error
 
     project_root = Path.cwd()
     server, context = create_server(web_dir, port, project_root)

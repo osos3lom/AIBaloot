@@ -89,8 +89,9 @@ rng = np.random.default_rng(42)
 backgrounds = Backgrounds(bg_shards, rng=rng)
 cards = Cards(card_shards, rng=rng)
 
-print(f"{len(backgrounds)} backgrounds, {len(cards)} cards across "
-      f"{len(cards.class_names)} classes")  # 32 for a packed Baloot deck
+print(
+    f"{len(backgrounds)} backgrounds, {len(cards)} cards across {len(cards.class_names)} classes"
+)  # 32 for a packed Baloot deck
 
 card = cards.sample("Ah")
 bg = backgrounds.sample(size=720)

@@ -1,196 +1,266 @@
-# hakim-vision | استوديو حكيم للرؤية الحاسوبية
+<div align="center">
+
+<img src="docs/assets/hakim_logo.png" alt="Hakim Baloot AI Logo" width="160" style="border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
+
+# 🃏 hakim-vision | استوديو حكيم للرؤية الحاسوبية
+### منظومة الذكاء الاصطناعي والرؤية الحاسوبية لحساب وتقييم أوراق البلوت السعودي
+#### SOTA Saudi Baloot Card Detection, Scoring Engine & In-Browser WebGPU Studio
 
 [![CI](https://github.com/osos3lom/AIBaloot/actions/workflows/ci.yml/badge.svg)](https://github.com/osos3lom/AIBaloot/actions/workflows/ci.yml)
+[![Pages](https://github.com/osos3lom/AIBaloot/actions/workflows/pages.yml/badge.svg)](https://osos3lom.github.io/AIBaloot/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
-[![UI: Arabic First](https://img.shields.io/badge/UI-Arabic%20First%20%D8%A7%D9%84%D8%B9%D8%B1%D8%A8%D9%8A%D8%A9-10b981.svg)](web/index.html)
+[![UI: Arabic First](https://img.shields.io/badge/UI-Arabic%20First%20%D8%A7%D9%84%D8%B9%D8%B1%D8%A8%D9%8A%D8%A9-10b981.svg)](https://osos3lom.github.io/AIBaloot/)
+[![Inference: WebGPU](https://img.shields.io/badge/Inference-WebGPU%20%2F%20FP16-0ea5e9.svg)](web/models/model-card.md)
+[![Model: YOLO11](https://img.shields.io/badge/Detector-YOLO11n-purple.svg)](web/models/model-card.md)
 
-> 🇸🇦 **منظومة الرؤية الحاسوبية والذكاء الاصطناعي للعبة البلوت السعودي**
-> توليد بيانات تركيبية، استكشاف وتحديد أوراق اللعب، وتدريب نماذج التعلم العميق في المتصفح عبر WebGPU.
->
-> Synthetic playing-card dataset generation and detector training pipeline.
-> The computer-vision pillar of the **Hakim** open-source Baloot AI platform.
+<br>
 
-This repository — originally named `AIBaloot` and forked from [`geaxgx/playing-card-detection`](https://github.com/geaxgx/playing-card-detection) — is being modernized as `hakim-vision`: one of four pillars of [Hakim](#about-hakim), a research-credible, OSS-first Baloot AI platform.
+<p align="center">
+  <a href="#english-documentation"><strong>🌐 English Documentation (الانتقال للنسخة الإنجليزية) ↓</strong></a>
+</p>
 
-The job of `hakim-vision` is to:
+<p align="center">
+  <a href="https://osos3lom.github.io/AIBaloot/"><strong>🚀 تجربة التطبيق المباشر (Live App)</strong></a> •
+  <a href="https://osos3lom.github.io/AIBaloot/studio.html"><strong>🔬 استوديو ومختبر البيانات (Studio)</strong></a> •
+  <a href="#-معرض-الواجهات-والشاشات-التفاعلية"><strong>📸 معرض الشاشات</strong></a> •
+  <a href="#-دليل-البدء-السريع"><strong>⚡ البدء السريع</strong></a> •
+  <a href="#-التوثيق-والمراجع"><strong>📖 التوثيق</strong></a>
+</p>
 
-1. **Generate** labeled synthetic scenes of playing cards on textured backgrounds, suitable for training modern object detectors.
-2. **Train** a card detector (YOLO11 / RT-DETRv2) on those scenes.
-3. **Export** quantized models (ONNX, CoreML, TFLite) for the Hakim mobile AR companion that overlays Baloot strategy hints on a physical card table.
+---
 
-## Status
+</div>
 
-The original 2018 notebook has been replaced by a typed, tested, containerized Python package built around the 32-card Baloot deck. See [the roadmap](#roadmap) for what's next.
+## 🇸🇦 نبذة عن المشروع
 
-| Surface | State |
-|---|---|
-| Modern Python toolchain (`uv`, `ruff`, `mypy --strict`, `pytest`) | ✅ |
-| Pinned, modern deps (OpenCV 4.10, NumPy 2; dropped `imgaug`) | ✅ |
-| CI: lint / type-check / test (Linux + macOS + Windows) / Docker | ✅ |
-| Multi-stage Dockerfile, non-root runtime | ✅ |
-| Notebook → `src/hakim_vision/` modules | ✅ |
-| Pickle → tar shards | ✅ |
-| 32-card Baloot deck across package & studio | ✅ |
-| Player-facing hand-value app (`web/index.html`) | ✅ |
-| Static browser dataset studio (`web/studio.html`) | ✅ |
-| Baloot scoring engine + tests (`web/scoring.js`) | ✅ |
-| Card **region** proposals in-browser (`web/detect.js`) | ✅ |
-| Bring-your-own-dataset: inspect, remap to 32 Baloot classes, train, export | ✅ |
-| Local job API so the studio runs real training (`hakim-vision studio`) | ✅ |
-| Rank/suit recognition model (regions are named manually until one is trained) | ⏳ train it with the pipeline below |
-| RT-DETRv2 + CoreML/TFLite export | ⏳ planned |
-| Gradio demo on Hugging Face Spaces | ⏳ planned |
+**hakim-vision** هو الركيزة الأساسية للرؤية الحاسوبية والذكاء الاصطناعي لمنصة **حكيم (Hakim)** المفتوحة المصدر للعبة البلوت السعودي. 
 
-## Quick start
+يتيح لك النظام تصوير أوراق اللعب بكاميرا الجوال أو المتصفح، والتعرف عليها فوريًا عبر نموذج **YOLO11** فائق الدقة، مع حساب قيمة يدك بدقة متناهية في نظامي **الصن** و **الحكم** ومشاريع اللعب (سرا، خمسين، مية، أربعمية، بلوت)، وكل ذلك **داخل المتصفح وبشكل محلي 100%** دون إرسال صورك لأي خادم سحابي بفضل تقنيات تسريع الرسوميات **WebGPU** و **WebAssembly**.
 
-### 1. Zero-Install Web Surfaces (Interactive In-Browser)
+---
 
-| Page | For | What it does |
-|---|---|---|
-| `web/index.html` | players | Photograph the cards in your hand, confirm what Hakim found, and read the hand's value in Sun or Hokum, projects included. |
-| `web/studio.html` | dataset work | Synthetic scenes and box annotation, plus the dataset → training → export lab described below. |
+## 📸 معرض الواجهات والشاشات التفاعلية
 
-Open either file directly, or serve both with the CLI:
+### 1. كاشف الأوراق اللحظي ومراجعة يد اللاعب
+<div align="center">
+  <img src="docs/assets/hand_detection_webgpu.png" alt="In-Browser Real-Time Baloot Card Detection" width="850" style="border-radius: 12px;">
+  <p><em>⚡ رصد وتحديد فوري لأوراق البلوت في مروحة اليد عبر WebGPU مع إمكانية التحقق والتعديل اللحظي التفاعلي</em></p>
+</div>
+
+---
+
+### 2. حاسبة قيمة اليد ومحرك حساب نقاط الصن والحكم
+<div align="center">
+  <table>
+    <tr>
+      <td width="50%" align="center">
+        <img src="docs/assets/sun_scoring_calculator.png" alt="Sun Scoring Mode" width="100%" style="border-radius: 8px;">
+        <br>
+        <strong>☀️ حساب القيمة في نظام الصن (Sun Mode)</strong>
+        <br>
+        <sub>حساب دقيق لنقاط الأوراق من 120 نقطة وتفصيل قيمة كل ورقة والمشاريع المتوفرة</sub>
+      </td>
+      <td width="50%" align="center">
+        <img src="docs/assets/hokom_scoring_calculator.png" alt="Hokom Scoring Mode" width="100%" style="border-radius: 8px;">
+        <br>
+        <strong>👑 حساب القيمة في نظام الحكم (Hokom Mode)</strong>
+        <br>
+        <sub>تحديد لون الحكم (♦, ♥, ♣, ♠) مع إعادة تقييم الولد والتسعة وحساب نقاط الصكة (152 نقطة)</sub>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
+### 3. استوديو البيانات: تسريع WebGPU وتوليد المشاهد وفحص البيانات
+<div align="center">
+  <table>
+    <tr>
+      <td width="50%" align="center">
+        <img src="docs/assets/studio_cell1_cell2.png" alt="Hakim Studio Cell 1 & 2" width="100%" style="border-radius: 8px;">
+        <br>
+        <strong>🔬 خلية [1] و [2]: بيئة WebGPU ومولد المشاهد التركيبية</strong>
+        <br>
+        <sub>فحص عتاد كرت الشاشة، توليد مشاهد الطاولة وتركيب الأوراق مع المحاكاة الفيزيائية</sub>
+      </td>
+      <td width="50%" align="center">
+        <img src="docs/assets/studio_cell3_cell4.png" alt="Hakim Studio Cell 3 & 4" width="100%" style="border-radius: 8px;">
+        <br>
+        <strong>📊 خلية [3] و [4]: كاشف YOLO واستيراد مجموعات البيانات</strong>
+        <br>
+        <sub>معاينة إحداثيات YOLO، استيراد مجموعات Kaggle ومطابقة الأصناف لـ 32 فئة بلوت</sub>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
+### 4. استوديو التدريب: تدريب كاشف البلوت وتصدير أوزان ONNX
+<div align="center">
+  <img src="docs/assets/studio_cell5_cell6.png" alt="Hakim Studio Training & ONNX Export" width="850" style="border-radius: 12px;">
+  <p><em>🚀 خلية [5] و [6]: ضبط المعاملات الفائقة (Hyperparameters)، مراقبة منحنيات الخسارة والدقة mAP@50، وتصدير الأوزان مباشرة للمتصفح</em></p>
+</div>
+
+---
+
+## ✨ أبرز المزايا والقدرات
+
+```
+                  ┌─────────────────────────────────────────────────────────┐
+                  │                 كاميرا الجوال أو المتصفح                 │
+                  └────────────────────────────┬────────────────────────────┘
+                                               │ (معالجة محلية 100% بدون خادم)
+                                               ▼
+                  ┌─────────────────────────────────────────────────────────┐
+                  │             معالج التنسيقات عبر WebGPU                  │
+                  │   • ضبط الأبعاد إلى 416x416 عبر الشيدر الرسومي           │
+                  │   • رفع الإطارات مباشرة إلى ذاكرة كرت الشاشة FP16        │
+                  └────────────────────────────┬────────────────────────────┘
+                                               │
+                                               ▼
+                  ┌─────────────────────────────────────────────────────────┐
+                  │              نموذج YOLO11 في المتصفح                    │
+                  │   • 33 صنفاً (32 ورقة بلوت + صنف الأوراق الأخرى)         │
+                  │   • استدلال WebGPU فائق السرعة (~15-30 مللي ثانية)       │
+                  └────────────────────────────┬────────────────────────────┘
+                                               │
+                                               ▼
+                  ┌─────────────────────────────────────────────────────────┐
+                  │             محرك حساب وتقييم البلوت السعودي             │
+                  │   • الحساب الرياضي الدقيق لنقاط الصن والحكم             │
+                  │   • احتساب المشاريع (سرا، خمسين، مية، 400، بلوت)        │
+                  └─────────────────────────────────────────────────────────┘
+```
+
+- **⚡ خصوصية كاملة وذكاء اصطناعي محلي**: يتم تشغيل شبكة الاستدلال العصبي بالكامل على متصفحك عبر `onnxruntime-web` ومسرع **WebGPU**. لا يتم رفع أي صورة لخادم خارجي إطلاقاً.
+- **🃏 33 صنفاً مخصصاً للبلوت السعودي**:
+  - **8 قيم (Ranks)**: إكة (Ace)، شايب (King)، بنت (Queen)، ولد (Jack)، 10، 9، 8، 7.
+  - **4 أشكال (Suits)**: هاص ♥ (Hearts)، ديمن ♦ (Diamonds)، كلوف ♣ (Clubs)، سبيت ♠ (Spades).
+  - **صنف للأوراق الأخرى (Other)**: للقيم 2–6 لتفادي التعرف الخاطئ عند استخدام صكات البوكر 52 ورقة.
+- **📐 محرك الحساب الرياضي المعتمد للبلوت**: كود JavaScript فائق السرعة لحساب نقاط الصن (120 نقطة) والحكم (152 نقطة) ومشاريع اللعب بدقة متناهية.
+- **🧪 منظومة متكاملة لإدارة وتجهيز البيانات**: أدوات سطر أوامر لتحميل وفحص وحذف الصور المكررة عبر البصمة الإدراكية (Perceptual dHash) وإعادة هيكلة البيانات لصيغة البلوت.
+- **🚀 تكميم الأوزان (Quantization) وفحص التكافؤ**: خط تصدير مؤتمت للأوزان بصيغة FP16 لـ WebGPU وتكميم ساكن INT8 للـ WASM مع اختبار التكافؤ عبر مقياس mAP.
+
+---
+
+## ⚡ دليل البدء السريع
+
+### 1. تشغيل الاستوديو المحلي في المتصفح
+
 ```bash
+# استنساخ المستودع
+git clone https://github.com/osos3lom/AIBaloot.git
+cd AIBaloot
+
+# تثبيت مدير الحزم uv ومزامنة الاعتماديات
+uv sync --all-extras
+
+# تشغيل استوديو الويب المعرب
 uv run hakim-vision studio
 ```
 
-**How much of the "AI" is real today:** `detect.js` finds *where* card-shaped
-regions are, entirely in-browser and with no model download. It does not yet
-name the rank and suit — that needs the trained detector on the roadmap — so
-the app asks you to confirm each card instead of guessing. Register a model
-with `HakimDetector.registerClassifier()` and the same UI fills the cards in
-automatically. Scoring is exact either way, and covered by tests:
+افتح الرابط `http://localhost:8000` في متصفحك.
+
+---
+
+### 2. أوامر إدارة البيانات وتدريب النموذج
 
 ```bash
+# 1. فحص مجلد مجموعة البيانات
+uv run hakim-vision dataset inspect --source data/downloads/playing-cards
+
+# 2. معاينة بصرية لصناديق التحديد Bounding Boxes
+uv run hakim-vision dataset preview --source data/downloads/playing-cards --output data/preview
+
+# 3. فحص وحذف الصور المكررة إدراكياً لمنع تسرب البيانات
+uv run hakim-vision dataset dedupe --source data/downloads/playing-cards --threshold 4 --drop-leaks
+
+# 4. إعادة تعيين أصناف الصكة الـ 52 إلى أصناف البلوت الـ 33
+uv run hakim-vision dataset remap --source data/downloads/playing-cards --output data/baloot-dataset --unmapped other
+
+# 5. تدريب كاشف YOLO11 للبلوت
+uv run hakim-vision train --data data/baloot-dataset/data.yaml --model yolo11n.pt --epochs 120 --imgsz 416
+
+# 6. تصدير نموذج ONNX FP16 مخصص لـ WebGPU
+uv run hakim-vision export --weights runs/hakim/baloot/weights/best.pt --output web/models/baloot-v1.fp16.onnx --half
+
+# 7. التكميم الساكن INT8 لتسريع المعالجة على المعالجات المركزية WASM
+uv run hakim-vision quantize --model runs/hakim/baloot/weights/best_fp32.onnx --output web/models/baloot-v1.int8.onnx --calib-dir data/baloot-dataset/images/train
+
+# 8. فحص تكافؤ الدقة على عينة الاختبار المنفصلة
+uv run hakim-vision evaluate-parity --model web/models/baloot-v1.fp16.onnx --images data/baloot-dataset/images/test --labels data/baloot-dataset/labels/test
+```
+
+---
+
+### 3. تشغيل الاختبارات وفحص جودة الكود
+
+```bash
+# تشغيل كامل حزمة اختبارات بايثون مع تقرير التغطية
+uv run pytest -q
+
+# فحص الأنواع الصارم (Strict Type Checking)
+uv run mypy
+
+# فحص التنسيق والجودة البرمجية
+uv run ruff check .
+uv run ruff format --check .
+
+# تشغيل اختبارات محرك حساب البلوت في جافاسكريبت
 node --test web/scoring.test.js
 ```
 
-### 2. Train a detector on your own dataset
+---
 
-The studio's lab takes a third-party card dataset and walks it to a trained,
-browser-ready model. Every step is also a CLI command, so nothing is trapped in
-the UI.
-
-```bash
-# 0. Get a dataset (this one is 52 poker classes; Baloot needs 32).
-scripts/fetch_kaggle_dataset.sh
-# or: curl -L -o playing-cards.zip #       https://www.kaggle.com/api/v1/datasets/download/andy8744/playing-cards-object-detection-dataset
-
-# 1. What is actually in it: images, boxes, classes, and label problems.
-uv run hakim-vision dataset inspect --source data/downloads/playing-cards-object-detection-dataset
-
-# 2. Map it onto the 32-card Baloot deck (drops 2-6, re-indexes the rest).
-uv run hakim-vision dataset remap   --source data/downloads/playing-cards-object-detection-dataset   --output data/baloot-dataset
-
-# 3. Train (needs the training extra: uv sync --extra train).
-uv run hakim-vision train --data data/baloot-dataset/data.yaml --model yolo11n.pt --epochs 100
-
-# 4. Export for the browser.
-uv run hakim-vision export --weights runs/hakim/baloot/weights/best.pt
-```
-
-Or do all four in the studio:
-
-```bash
-uv run hakim-vision studio
-```
-
-That serves both pages **and** a loopback job API, so the studio can inspect
-folders, build the Baloot dataset, start and stop training, and stream the real
-`results.csv` metrics into its chart. The URL it prints carries a per-run token;
-the API is bound to `127.0.0.1`, requires that token, and refuses cross-origin
-requests — it runs training commands, so do not expose it. Opened as a plain
-file instead, the studio still inspects a folder you pick in the browser and
-hands you the commands to run yourself.
-
-Once exported, wire the model into the player app so cards are named
-automatically instead of by hand:
-
-```js
-HakimDetector.registerClassifier(async (imageData, region) => {
-  // run your ONNX session, then:
-  return { card: "Ah", confidence: 0.93 };
-});
-```
-
-### 3. Python Package & CLI
-```bash
-# Install uv and sync dependencies
-uv sync --all-extras
-
-# Run tests and check version
-uv run pytest -q
-uv run hakim-vision version
-uv run hakim-vision config-show
-```
-
-Run with Docker:
-
-```bash
-docker build -t hakim-vision .
-docker run --rm hakim-vision hakim-vision version
-```
-
-## What's inside
+## 📁 هيكل وشجرة المستودع
 
 ```
-.
-├── src/hakim_vision/         # The package (typed, tested)
-│   ├── cli.py                # `hakim-vision` CLI (typer: generate, studio, pack)
-│   ├── config.py             # Pydantic settings (HAKIM_VISION_* env vars)
-│   ├── geometry.py           # YOLO/VOC box conversion
-│   ├── datasets/             # Discover, inspect, and remap third-party datasets
-│   ├── models/               # Training (Ultralytics) and ONNX export
-│   ├── jobs.py               # Subprocess job runner for the studio
-│   ├── server.py             # Loopback JSON API behind the studio
-│   └── synthetic/            # Scene generation, asset loaders, augmentation
-├── web/                      # Zero-install browser surfaces
-│   ├── index.html            # Player app: photo -> cards -> hand value
-│   ├── app.js                # App controller (capture, review, score)
-│   ├── scoring.js            # Baloot scoring engine (pure, tested)
-│   ├── scoring.test.js       # node --test web/scoring.test.js
-│   ├── detect.js             # Card-region proposals + classifier seam
-│   ├── i18n.js               # Arabic-first bilingual strings
-│   └── studio.html/.js       # Dataset studio: synth scenes, annotation, YOLO export
-├── tests/                    # pytest suite
-├── scripts/                  # Dataset download helpers
-├── data/cards.names          # 32 Baloot card-class names (Ah, 7s, …)
-├── docs/roadmap.md           # 12-month technical roadmap
-├── Dockerfile                # multi-stage, non-root
-└── .github/workflows/ci.yml  # CI
+AIBaloot/
+├── docs/
+│   ├── assets/               # شعارات وصور الشاشات عالية الدقة
+│   │   ├── hakim_logo.png
+│   │   ├── hand_detection_webgpu.png
+│   │   ├── sun_scoring_calculator.png
+│   │   ├── hokom_scoring_calculator.png
+│   │   ├── studio_cell1_cell2.png
+├── web/                      # Zero-install client-side Web application
+│   ├── index.html            # Player app: Camera photo -> WebGPU YOLO -> Baloot value
+│   ├── studio.html           # Interactive Dataset Studio & Model Workbench
+│   ├── app.js / lab.js       # UI controllers with full Arabic/English i18n
+│   ├── model-runner.js       # In-browser WebGPU & WASM ONNX runner
+│   ├── scoring.js            # Saudi Baloot scoring arithmetic engine
+│   ├── scoring.test.js       # Scoring test suite (node --test)
+│   ├── models/               # Model weights & Model Card
+│   └── runtime/              # Self-hosted ONNX Runtime WebGPU binaries
+├── tests/                    # Comprehensive unit & integration tests
+├── .github/workflows/        # CI, GitHub Pages, and Release pipelines
+└── pyproject.toml            # Modern packaging & tool definitions
 ```
 
-## About Hakim
+---
 
-`hakim-vision` is one of four planned pillars of **Hakim** (Arabic: حكيم, "the sage") — an open, free, Arabic-first Baloot AI platform:
+## 📖 Documentation & References
 
-| Pillar | Role |
-|---|---|
-| `hakim-engine` | Authoritative Baloot rules + scoring (Python + Rust/WASM) |
-| `hakim-agent` | Self-play RL + search agents (ISMCTS → Deep CFR → ReBeL-style) |
-| `hakim-coach` | Arabic LLM commentary, replay analysis, voice play-by-play |
-| **`hakim-vision`** | **This repo.** Card detection + AR mobile companion for physical Baloot tables |
+- 📘 **[Architecture & Pipeline Guide](docs/detector_pipeline.md)**: Deep dive into YOLO11 training, stretch preprocessing, quantization, and WebGPU shaders.
+- 🃏 **[Model Card (v1.0.0)](web/models/model-card.md)**: Accuracy metrics, mAP@50 benchmarks, and runtime latency measurements.
+- 🔄 **[Migration Notes](docs/migration.md)**: Details on replacing the legacy 2018 notebook with modern modular Python & WebAssembly.
 
-The strategic bet: Baloot is the dominant card game in the Gulf (60M+ population, tens of millions of players), and no public research-grade engine exists. Hakim aims to be Lichess + Stockfish + an Arabic AI coach, for Baloot.
+---
 
-## Roadmap
+## 🤝 Contributing
 
-See [`docs/roadmap.md`](docs/roadmap.md) for the detailed 12-month plan. Headline phases:
+Contributions, issues, and feature requests are welcome!
+- Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) to set up your local environment.
+- For security vulnerabilities, refer to [`SECURITY.md`](SECURITY.md).
 
-- **Weeks 1–2 — Quick wins:** modernize toolchain, kill pickle, ship a Gradio demo. _(in progress)_
-- **Months 1–3 — Mid-term:** YOLO11 / RT-DETRv2, auto-labeling with Grounding DINO + SAM 2, Kubric-based photorealistic synthesis.
-- **Months 3–12 — Long-term:** on-device CoreML / TFLite export, AR companion in Hakim mobile, real-time inference < 30 ms on iPhone.
+---
 
-## Contributing
+## 📄 License
 
-We want help. Start with [`CONTRIBUTING.md`](CONTRIBUTING.md) and look for issues tagged `good first issue`. Security reports go to [`SECURITY.md`](SECURITY.md).
+This project is licensed under the [MIT License](LICENSE).
+<br>
+Crafted with ❤️ for the open-source Baloot & AI community.
 
-## Credits
-
-This project began as a fork of the excellent [`geaxgx/playing-card-detection`](https://github.com/geaxgx/playing-card-detection) by Géraud Cardona Gimenez. The original synthetic-data trick (cards composited onto VGG's [Describable Textures Dataset](https://www.robots.ox.ac.uk/~vgg/data/dtd/)) is preserved while the surrounding engineering is modernized.
-
-## License
-
-MIT — see [LICENSE](LICENSE).

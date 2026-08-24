@@ -41,9 +41,9 @@ class TrainingConfig:
 
     data: Path
     model: str = "yolo11n.pt"
-    epochs: int = 50
-    imgsz: int = 640
-    batch: int = 16
+    epochs: int = 120
+    imgsz: int = 704
+    batch: int = 32
     device: str = ""
     workers: int = 8
     patience: int = 20
@@ -51,6 +51,14 @@ class TrainingConfig:
     name: str = "baloot"
     resume: bool = False
     seed: int = 42
+    fliplr: float = 0.0
+    flipud: float = 0.0
+    degrees: float = 180.0
+    cos_lr: bool = True
+    close_mosaic: int = 10
+    scale: float = 0.5
+    amp: bool = True
+    half: bool = True
 
     def to_kwargs(self) -> dict[str, Any]:
         """Ultralytics keyword arguments for `YOLO.train()`."""
@@ -66,6 +74,14 @@ class TrainingConfig:
             "seed": self.seed,
             "resume": self.resume,
             "exist_ok": True,
+            "fliplr": self.fliplr,
+            "flipud": self.flipud,
+            "degrees": self.degrees,
+            "cos_lr": self.cos_lr,
+            "close_mosaic": self.close_mosaic,
+            "scale": self.scale,
+            "amp": self.amp,
+            "half": self.half,
         }
         if self.device:
             kwargs["device"] = self.device
@@ -163,7 +179,7 @@ def train_detector(config: TrainingConfig) -> TrainingOutcome:
         raise FileNotFoundError(f"Dataset config not found: {data_path}")
 
     try:
-        from ultralytics import YOLO
+        from ultralytics import YOLO  # type: ignore[attr-defined]
     except ImportError as error:  # pragma: no cover - depends on the environment
         raise UltralyticsMissingError() from error
 

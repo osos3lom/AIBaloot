@@ -39,6 +39,7 @@ var HakimDetector = (function () {
   var MIN_SLIVER_FACTOR = 0.18;
 
   var classifier = null;
+  var detector = null;
 
   function registerClassifier(fn) {
     classifier = typeof fn === 'function' ? fn : null;
@@ -46,6 +47,14 @@ var HakimDetector = (function () {
 
   function hasClassifier() {
     return classifier !== null;
+  }
+
+  function registerDetector(fn) {
+    detector = typeof fn === 'function' ? fn : null;
+  }
+
+  function hasDetector() {
+    return detector !== null;
   }
 
   /** Downscale into an offscreen canvas so analysis cost is bounded. */
@@ -268,8 +277,7 @@ var HakimDetector = (function () {
    *
    * @returns {Promise<{regions: Array, labelled: boolean, elapsedMs: number}>}
    */
-  function detect(source, options) {
-    var startedAt = (typeof performance !== 'undefined' ? performance : Date).now();
+  function runFallbackDetection(source, options, startedAt) {
     var regions = findCardRegions(source, options);
 
     if (!classifier) {
@@ -313,9 +321,45 @@ var HakimDetector = (function () {
     });
   }
 
+  /**
+   * Full pass: run registered detector (e.g. YOLO WebGPU), falling back to heuristic
+   * segmentation if absent or on error.
+   *
+   * @returns {Promise<{regions: Array, labelled: boolean, elapsedMs: number}>}
+   */
+  function detect(source, options) {
+    var startedAt = (typeof performance !== 'undefined' ? performance : Date).now();
+
+    if (detector) {
+      return Promise.resolve(detector(source, options))
+        .then(function (result) {
+          if (result && Array.isArray(result.regions)) {
+            if (typeof result.elapsedMs !== 'number') {
+              result.elapsedMs = (typeof performance !== 'undefined' ? performance : Date).now() - startedAt;
+            }
+            if (typeof result.labelled !== 'boolean') {
+              result.labelled = true;
+            }
+            return result;
+          }
+          return runFallbackDetection(source, options, startedAt);
+        })
+        .catch(function (err) {
+          if (typeof console !== 'undefined' && console.warn) {
+            console.warn('Registered detector failed, falling back to heuristic regions:', err);
+          }
+          return runFallbackDetection(source, options, startedAt);
+        });
+    }
+
+    return runFallbackDetection(source, options, startedAt);
+  }
+
   return {
     registerClassifier: registerClassifier,
     hasClassifier: hasClassifier,
+    registerDetector: registerDetector,
+    hasDetector: hasDetector,
     findCardRegions: findCardRegions,
     detect: detect
   };
@@ -324,3 +368,4 @@ var HakimDetector = (function () {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = HakimDetector;
 }
+

@@ -181,17 +181,29 @@ def suggest_mapping(source_classes: list[str]) -> list[RemapSuggestion]:
 
 
 def mapping_to_index_map(
-    source_classes: list[str], mapping: dict[str, str | None]
+    source_classes: list[str],
+    mapping: dict[str, str | None],
+    unmapped: str = "drop",
 ) -> dict[int, int]:
-    """Convert a `{source name: baloot name}` mapping to `{source id: baloot id}`."""
-    baloot_index = {name: index for index, name in enumerate(get_baloot_classes())}
+    """Convert a `{source name: baloot name}` mapping to `{source id: baloot id}`.
+
+    When `unmapped == "other"`, unmapped source classes (where target is None) map to index 32 ('other').
+    When `unmapped == "drop"`, unmapped source classes are omitted from the map.
+    """
+    include_other = unmapped == "other"
+    classes = get_baloot_classes(include_other=include_other)
+    baloot_index = {name: index for index, name in enumerate(classes)}
+    other_id = baloot_index.get("other")
+
     index_map: dict[int, int] = {}
     for source_id, source_name in enumerate(source_classes):
         target = mapping.get(source_name)
         if target is None:
+            if include_other and other_id is not None:
+                index_map[source_id] = other_id
             continue
         if target not in baloot_index:
-            raise ValueError(f"'{target}' is not one of the 32 Baloot classes")
+            raise ValueError(f"'{target}' is not one of the {len(classes)} Baloot classes")
         index_map[source_id] = baloot_index[target]
     return index_map
 
@@ -215,9 +227,11 @@ def _place_image(source: Path, destination: Path, link_mode: str) -> None:
     shutil.copy2(source, destination)
 
 
-def _write_data_yaml(output_root: Path, split_names: list[str]) -> Path:
+def _write_data_yaml(
+    output_root: Path, split_names: list[str], include_other: bool = False
+) -> Path:
     """Write the Ultralytics config for the remapped dataset."""
-    classes = get_baloot_classes()
+    classes = get_baloot_classes(include_other=include_other)
     lines = [f"path: {output_root.resolve().as_posix()}"]
     for split in split_names:
         key = split if split != "test" else "test"
@@ -241,13 +255,19 @@ def remap_dataset(
     layout: DatasetLayout | None = None,
     link_mode: str = "auto",
     drop_empty: bool = True,
+    unmapped: str = "drop",
+    min_box_pixels: float = 6.0,
+    imgsz: int = 416,
 ) -> RemapResult:
     """Write a Baloot-class dataset from `root` into `output_root`.
 
     Args:
-        mapping: source class name -> Baloot class name, or None to drop it.
+        mapping: source class name -> Baloot class name, or None to drop/map to other.
         link_mode: ``auto`` (hardlink, else symlink, else copy), ``link``, or ``copy``.
         drop_empty: skip images whose boxes were all dropped by the mapping.
+        unmapped: ``other`` (map unmapped cards to class 32 'other') or ``drop``.
+        min_box_pixels: discard boxes narrower or shorter than this pixel threshold at `imgsz`.
+        imgsz: nominal image dimension used to compute normalised minimum box threshold.
     """
     resolved = layout or discover_layout(root)
     if not resolved.class_names:
@@ -255,9 +275,12 @@ def remap_dataset(
             "The source dataset has no class names; add a data.yaml or classes.txt first."
         )
 
-    index_map = mapping_to_index_map(resolved.class_names, mapping)
+    index_map = mapping_to_index_map(resolved.class_names, mapping, unmapped=unmapped)
     if not index_map:
         raise ValueError("The mapping keeps no classes at all.")
+
+    include_other = unmapped == "other"
+    min_box_ratio = min_box_pixels / float(imgsz) if imgsz > 0 else 0.0
 
     output_root = Path(output_root).expanduser()
     output_root.mkdir(parents=True, exist_ok=True)
@@ -286,13 +309,35 @@ def remap_dataset(
                     continue
                 try:
                     source_id = int(float(parts[0]))
+                    cx = float(parts[1])
+                    cy = float(parts[2])
+                    w = float(parts[3])
+                    h = float(parts[4])
                 except ValueError:
+                    result.boxes_dropped += 1
                     continue
+
                 target_id = index_map.get(source_id)
                 if target_id is None:
                     result.boxes_dropped += 1
                     continue
-                kept_lines.append(" ".join([str(target_id), *parts[1:]]))
+
+                # Box hygiene: discard non-positive, too small dimensions
+                if w <= 0.0 or h <= 0.0 or w < min_box_ratio or h < min_box_ratio:
+                    result.boxes_dropped += 1
+                    continue
+
+                # Box hygiene: clip coordinates into [0, 1]
+                cx = max(0.0, min(1.0, cx))
+                cy = max(0.0, min(1.0, cy))
+                w = max(0.0, min(1.0, w))
+                h = max(0.0, min(1.0, h))
+
+                extra = parts[5:]
+                formatted_box = [f"{target_id}", f"{cx:.6f}", f"{cy:.6f}", f"{w:.6f}", f"{h:.6f}"]
+                if extra:
+                    formatted_box.extend(extra)
+                kept_lines.append(" ".join(formatted_box))
 
             if not kept_lines and drop_empty:
                 result.images_skipped_empty += 1
@@ -309,7 +354,9 @@ def remap_dataset(
 
         result.per_split[split.name] = kept_in_split
 
-    result.data_yaml = _write_data_yaml(output_root, [split.name for split in resolved.splits])
+    result.data_yaml = _write_data_yaml(
+        output_root, [split.name for split in resolved.splits], include_other=include_other
+    )
     return result
 
 

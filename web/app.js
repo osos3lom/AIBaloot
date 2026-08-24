@@ -189,6 +189,23 @@
             });
             showDetectMessage(result.labelled ? found : found + ' ' + t('detect_needs_naming'));
           }
+
+          var diagEl = document.getElementById('detect-diagnostics');
+          if (result.backend && result.backend !== 'none') {
+            var backendName = result.backend === 'webgpu' ? 'WebGPU' : 'WASM';
+            var variantName = (result.modelVariant || 'fp16').toUpperCase();
+            if (diagEl) {
+              diagEl.textContent = t('detect_diagnostics', {
+                backend: backendName,
+                variant: variantName,
+                ms: Math.round(result.elapsedMs)
+              });
+              diagEl.classList.remove('hidden');
+            }
+          } else if (diagEl) {
+            diagEl.classList.add('hidden');
+          }
+
           render();
         })
         .catch(function () {
@@ -570,6 +587,18 @@
     });
 
     setLanguage('ar');
+
+    // Register Service Worker for offline caching
+    if (
+      'serviceWorker' in navigator &&
+      (window.location.protocol === 'https:' ||
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1')
+    ) {
+      navigator.serviceWorker.register('sw.js').catch(function (err) {
+        console.warn('Hakim SW registration skipped/failed:', err);
+      });
+    }
   }
 
   if (document.readyState === 'loading') {

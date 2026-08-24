@@ -48,6 +48,7 @@ data/backgrounds_src/
 *.pt
 *.pth
 *.onnx
+!web/models/*.onnx
 *.safetensors
 *.tflite
 *.mlmodel
@@ -57,10 +58,14 @@ data/backgrounds_src/
 .env.*
 !.env.example
 
-# Local test photos dropped into the web studio (not redistributable)
-web/samples/
+# Local test photos (not redistributable)
+data/test-photos/
 
 # Training runs and downloaded datasets
 runs/
 data/downloads/
 data/baloot-dataset/
+
+# GitHub Pages build output
+_site/
+web/test-photos/

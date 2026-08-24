@@ -360,3 +360,16 @@ def test_job_detail_for_an_unknown_id_is_404(studio):
     with pytest.raises(urllib.error.HTTPError) as error:
         _request(f"{base}/api/jobs/deadbeef", token=token)
     assert error.value.code == 404
+
+
+def test_a_rejected_post_leaves_the_connection_usable(studio):
+    """A 403 must drain the body; otherwise the next request reads garbage."""
+    base, token, _ = studio
+
+    with pytest.raises(urllib.error.HTTPError) as error:
+        _request(f"{base}/api/train", payload={"data": "x" * 5000})
+    assert error.value.code == 403
+
+    # The server must still answer normally afterwards.
+    _, payload = _request(f"{base}/api/status", token=token)
+    assert payload["authenticated"] is True

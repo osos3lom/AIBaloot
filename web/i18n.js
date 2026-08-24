@@ -30,6 +30,7 @@ var HakimI18N = (function () {
       detect_found: 'حدّد حكيم {count} موضع ورقة في {ms} مللي ثانية — راجعها وأضف ما فاته.',
       detect_none: 'لم يرصد حكيم أي ورقة. جرّب إضاءة أوضح وخلفية داكنة، أو أضف الأوراق يدويًا.',
       detect_needs_naming: 'نموذج التعرّف على القيم غير محمَّل بعد، لذلك اضغط كل موضع لتحديد ورقته.',
+      detect_diagnostics: 'محرك التحليل: {backend} ({variant}) • {ms} مللي ثانية',
       detect_error: 'تعذّر تحليل الصورة. يمكنك إدخال الأوراق يدويًا.',
 
       step2_title: 'راجع الأوراق',
@@ -110,6 +111,7 @@ var HakimI18N = (function () {
       detect_found: 'Hakim proposed {count} card positions in {ms} ms — review them and add any it missed.',
       detect_none: 'No cards found. Try brighter light and a darker background, or add the cards manually.',
       detect_needs_naming: 'No rank/suit model is loaded yet, so tap each position to name its card.',
+      detect_diagnostics: 'Inference engine: {backend} ({variant}) • {ms} ms',
       detect_error: 'The photo could not be analysed. You can enter the cards manually.',
 
       step2_title: 'Review the cards',
