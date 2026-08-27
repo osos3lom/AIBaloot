@@ -198,10 +198,19 @@ var HakimScanUI = (function () {
   }
 
   function reportDetection(result) {
+    // The detector has a third outcome besides found and not-found: it locates a
+    // card confidently but classifies it as "other", which arrives here as a
+    // region with no card. Those draw as a dashed box and a ؟, and saying
+    // nothing about them leaves the player looking at boxes and no score,
+    // wondering which half of the app is broken.
+    var unnamed = result.regions.filter(function (region) { return !region.card; }).length;
+
     if (!result.regions.length) {
       showMessage(t('detect_none'), 'error');
+    } else if (unnamed) {
+      showMessage(t('detect_needs_naming'));
     } else {
-      showMessage(result.labelled ? '' : t('detect_needs_naming'));
+      showMessage('');
     }
 
     var diagnostics = el['scan-diagnostics'];
