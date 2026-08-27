@@ -15,6 +15,12 @@ from hakim_vision.synthetic.constants import (
     REF_CORNER_LR,
     SCENE_SIZE,
 )
+from hakim_vision.synthetic.fan import (
+    CardAtlas,
+    FanConfig,
+    load_backgrounds,
+    render_fan_scene,
+)
 from hakim_vision.synthetic.focus import variance_of_laplacian
 from hakim_vision.synthetic.hull import (
     HullDetection,
@@ -47,9 +53,11 @@ __all__ = [
     "SCENE_SIZE",
     "AugmentRange",
     "Backgrounds",
+    "CardAtlas",
     "CardSample",
     "Cards",
     "ExtractedCard",
+    "FanConfig",
     "HullDetection",
     "PlacedCard",
     "Scene",
@@ -58,11 +66,13 @@ __all__ = [
     "extract_card",
     "find_corner_hull",
     "hull_to_points",
+    "load_backgrounds",
     "pack_backgrounds",
     "pack_cards",
     "points_to_bbox",
     "points_to_polygon",
     "random_affine_card",
+    "render_fan_scene",
     "render_random_scene",
     "variance_of_laplacian",
     "write_yolo_label",

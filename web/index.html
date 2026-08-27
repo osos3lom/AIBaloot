@@ -36,13 +36,61 @@
     iOS "Add to Home Screen" takes apple-touch-icon (and only ever 180x180),
     Android install reads the manifest, and a shared link reads og:image.
   -->
+  <!-- logo1.ico verbatim: nine entries, 16 through 256, so it needs no
+       PNG companions and nothing can outrank it. -->
   <link rel="icon" href="icons/favicon.ico" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <meta name="msapplication-TileColor" content="#f2efe7">
   <meta name="msapplication-TileImage" content="icons/icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
+
+  <!--
+    The chin measurement.
+
+    Inline and in the head because it has to land before the first paint: a
+    backdrop that starts a chin short and grows one frame later reads as a
+    flicker along the bottom edge. See the chin-gap note in the stylesheet for
+    why the number cannot just be env(safe-area-inset-bottom).
+  -->
+  <script>
+    (function () {
+      var root = document.documentElement;
+
+      function installed() {
+        return navigator.standalone === true || (window.matchMedia && (
+          matchMedia('(display-mode: standalone)').matches ||
+          matchMedia('(display-mode: fullscreen)').matches));
+      }
+
+      function measure() {
+        /* In a browser tab the shortfall is the browser's own toolbars, and
+           drawing under those is not edge-to-edge, it is hidden content. Only
+           an installed app owns the glass. */
+        if (!installed()) { root.style.setProperty('--chin-bleed', '0px'); return; }
+
+        /* Safari has long reported screen.width/height in the device's native
+           orientation and left them there through a rotation, so choose the
+           edge by the viewport rather than by the property name. */
+        var portrait = window.innerHeight >= window.innerWidth;
+        var screenH = portrait
+          ? Math.max(screen.width, screen.height)
+          : Math.min(screen.width, screen.height);
+
+        /* A chin is tens of points. A larger number is a viewport this code
+           does not understand — a split window, a software keyboard — and
+           bleeding the whole app into it would be worse than the band it set
+           out to remove. */
+        var gap = Math.round(screenH - window.innerHeight);
+        if (!(gap > 0) || gap > 80) gap = 0;
+        root.style.setProperty('--chin-bleed', gap + 'px');
+      }
+
+      measure();
+      addEventListener('resize', measure);
+      /* iOS reports the old size for a beat after the rotation animation. */
+      addEventListener('orientationchange', function () { setTimeout(measure, 300); });
+    })();
+  </script>
 
   <!-- Link previews, so a shared bookmark carries the mark too. -->
   <meta property="og:type" content="website">
@@ -138,6 +186,12 @@
 
       --dock-height: 66px;
       --dock-gap: 20px;
+      /*
+       * How far the layout viewport falls short of the physical screen at the
+       * bottom. Zero everywhere except an iOS standalone web app, where the
+       * head script measures it; see the chin-gap note above `.ambient`.
+       */
+      --chin-bleed: 0px;
       --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
     }
 
@@ -151,7 +205,21 @@
     img, canvas, svg, video { display: block; max-width: 100%; }
     table { border-collapse: collapse; width: 100%; }
 
-    html { -webkit-text-size-adjust: 100%; }
+    /*
+     * The ground colour lives on the root, not only on `body`.
+     *
+     * A background set on `body` alone propagates to the canvas, and the canvas
+     * is only ever as large as the viewport the browser admits to. Anything the
+     * UA paints outside that box comes from the root element's own background
+     * instead: the strip behind a home indicator, the overscroll gutter, and
+     * the band left over when a standalone web view is laid out shorter than
+     * the screen. An unset root there is white, which is the one colour this
+     * app never uses.
+     */
+    html {
+      -webkit-text-size-adjust: 100%;
+      background: var(--paper);
+    }
 
     body {
       font-family: 'Tajawal', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -161,6 +229,39 @@
       min-height: 100svh;
       overscroll-behavior-y: none;
     }
+
+    /* ---- The chin-gap note ---------------------------------------------
+     *
+     * Five layers in this file have to cover the screen edge to edge: the
+     * ambient wash, the home stage, and the three overlays. Getting them to
+     * the *physical* bottom edge is the one thing iOS makes genuinely hard.
+     *
+     * In an iOS standalone web app the fixed-position containing block starts
+     * at the physical top — the stage video runs behind the clock, which is
+     * the whole point of `black-translucent` — but it ends short of the
+     * physical bottom, at the top of the home-indicator chin. So `bottom: 0`
+     * stops a chin's height above the glass, and every one of these layers
+     * used to end there: a pale band under the dock, with the footage cut off
+     * along a hard line.
+     *
+     * `height: 100vh` was the previous attempt, on the usual advice that `vh`
+     * measures the physical screen while `bottom` measures the safe box. That
+     * advice does not hold on every iOS build — where `vh` resolves against
+     * the safe box too, the layer stays exactly as short as before — and on
+     * the builds where it does hold it overshoots by the chin, which drags the
+     * bottom-anchored sheet partly off the glass.
+     *
+     * So neither length is trusted. The head script measures the shortfall
+     * once, from `screen.height` against `innerHeight`, and publishes it as
+     * `--chin-bleed`; these layers pull their bottom edge down by exactly
+     * that. It is 0px in a browser tab, in every non-iOS install, and before
+     * the script runs — and in all of those cases `bottom: 0` is already the
+     * true bottom edge, so 0px is the right answer, not a fallback.
+     *
+     * Content is unaffected either way: each of these layers keeps its own
+     * bottom padding on `env(safe-area-inset-bottom)`, so what bleeds into the
+     * chin is background and never a control.
+     * -------------------------------------------------------------------- */
 
     /*
      * The ambient wash lives on its own fixed layer rather than on
@@ -173,9 +274,8 @@
     .ambient {
       position: fixed;
       inset: 0;
-      /* See the chin-gap note: 100vh is the physical screen in iOS standalone,
-         while `bottom: 0` is only the safe-area box. */
-      height: 100vh;
+      /* Down to the physical bottom edge; see the chin-gap note. */
+      bottom: calc(-1 * var(--chin-bleed));
       z-index: -1;
       pointer-events: none;
       background:
@@ -248,9 +348,8 @@
     .stage {
       position: fixed;
       inset: 0;
-      /* See the chin-gap note: 100vh is the physical screen in iOS standalone,
-         while `bottom: 0` is only the safe-area box. */
-      height: 100vh;
+      /* Down to the physical bottom edge; see the chin-gap note. */
+      bottom: calc(-1 * var(--chin-bleed));
       z-index: -1;
       pointer-events: none;
     }
@@ -1055,9 +1154,8 @@
     .sheet {
       position: fixed;
       inset: 0;
-      /* See the chin-gap note: 100vh is the physical screen in iOS standalone,
-         while `bottom: 0` is only the safe-area box. */
-      height: 100vh;
+      /* Down to the physical bottom edge; see the chin-gap note. */
+      bottom: calc(-1 * var(--chin-bleed));
       z-index: 60;
       display: flex;
       align-items: flex-end;
@@ -1082,7 +1180,7 @@
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
       padding: 10px calc(16px + env(safe-area-inset-right, 0px))
-               calc(20px + env(safe-area-inset-bottom, 0px))
+               calc(20px + env(safe-area-inset-bottom, 0px) + var(--chin-bleed))
                calc(16px + env(safe-area-inset-left, 0px));
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
       background: var(--glass-deep);
@@ -1675,9 +1773,8 @@
     .scanner {
       position: fixed;
       inset: 0;
-      /* See the chin-gap note: 100vh is the physical screen in iOS standalone,
-         while `bottom: 0` is only the safe-area box. */
-      height: 100vh;
+      /* Down to the physical bottom edge; see the chin-gap note. */
+      bottom: calc(-1 * var(--chin-bleed));
       z-index: 70;
       display: flex;
       flex-direction: column;
@@ -1708,7 +1805,7 @@
          land under the home indicator, so the bottom inset is added to its
          resting padding rather than left to the viewport. */
       padding: 8px calc(18px + env(safe-area-inset-right, 0px))
-               calc(14px + env(safe-area-inset-bottom, 0px))
+               calc(14px + env(safe-area-inset-bottom, 0px) + var(--chin-bleed))
                calc(18px + env(safe-area-inset-left, 0px));
       min-height: 0;
       overflow-y: auto;
@@ -1900,15 +1997,14 @@
     .win {
       position: fixed;
       inset: 0;
-      /* See the chin-gap note: 100vh is the physical screen in iOS standalone,
-         while `bottom: 0` is only the safe-area box. */
-      height: 100vh;
+      /* Down to the physical bottom edge; see the chin-gap note. */
+      bottom: calc(-1 * var(--chin-bleed));
       z-index: 65;
       display: grid;
       place-items: center;
       padding: calc(24px + env(safe-area-inset-top, 0px))
                calc(24px + env(safe-area-inset-right, 0px))
-               calc(24px + env(safe-area-inset-bottom, 0px))
+               calc(24px + env(safe-area-inset-bottom, 0px) + var(--chin-bleed))
                calc(24px + env(safe-area-inset-left, 0px));
       background: rgba(28, 26, 22, 0.5);
       -webkit-backdrop-filter: blur(6px);

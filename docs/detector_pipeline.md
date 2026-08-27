@@ -43,3 +43,40 @@ It detects and classifies all 32 Saudi Baloot playing cards (ranks A, K, Q, J, 1
 - **`web/model-runner.js`**: Lazy-loads `ort.webgpu.min.js` on first user interaction, initializes session, warms shaders with a dummy tensor, runs stretch preprocessing, and decodes the `1×37×3549` tensor with IoU-based NMS.
 - **`web/detect.js`**: Connects via `HakimDetector.registerDetector()`, falling back to heuristic `findCardRegions()` if WebGPU/WASM is unsupported.
 - **`web/sw.js`**: Service Worker caches model weights and WASM runtimes for instant offline loading.
+
+---
+
+## 5. v2 Retraining: Fanned Hands
+
+The v1 dataset is 2–3 card composites with at most 10% corner occlusion. A held
+Baloot hand is 8–13 cards sharing one pivot, where each card covers all but a
+narrow strip of the one behind it and fingers cover the bottom — so most cards
+are represented by a rank/suit index alone, sometimes a partial one. That gap is
+what the "Synthetic Dataset Domain Gap" warning in the model card describes.
+
+`scripts/train_fanned_detector.py` retrains against that geometry:
+
+```bash
+python scripts/train_fanned_detector.py all --device 0
+```
+
+| Stage | What it does |
+| :--- | :--- |
+| `atlas` | Downloads a slice of HuggingFace `JackFurby/playing-cards` and warps each annotated card quad back onto the canonical 228×348 card, producing 52 BGRA templates. Only the images used are fetched — a few hundred, not the dataset's 23 GB. |
+| `preview` | Renders annotated scenes to `preview/` so labels can be checked by eye. A geometry bug here is invisible in the loss curve and obvious in one picture. |
+| `dataset` | Renders fanned hands in parallel (`--jobs`), emits YOLO labels in the same 33-class scheme, and optionally folds in existing datasets with `--merge`. |
+| `train` | YOLO11 at 704 px with `fliplr=0`, `flipud=0`, `degrees=180`, `scale=0.6`, and mosaic closed for the final epochs. |
+| `export` | FP16 + INT8 ONNX plus a `model.json` matching `web/models/`. |
+
+### Label semantics
+
+Corner-index quads come from `REF_CORNER_HL` / `REF_CORNER_LR` projected through
+each card's placement homography. Both corners of every card are candidates; each
+is tested against the union of the cards drawn on top of it and the hand, and
+
+* survives only if `--min-visible` (default 0.45) of its area is still visible, and
+* is boxed around the **visible remainder**, not the whole index.
+
+That is looser than v1's 10% occlusion cut, deliberately: a fan whose labels only
+covered near-unoccluded indices would teach the model nothing about the case that
+currently fails.

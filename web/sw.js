@@ -12,7 +12,7 @@
  * Bump CACHE_VERSION on release; `activate` deletes every cache that does not match.
  */
 
-var CACHE_VERSION = 'v10';
+var CACHE_VERSION = 'v12';
 var CACHE_NAME = 'hakim-' + CACHE_VERSION;
 
 // Immutable, content-versioned by filename. Precached and served cache-first.
@@ -31,8 +31,6 @@ var APP_ASSETS = [
   'index.html',
   'manifest.webmanifest',
   'icons/favicon.ico',
-  'icons/favicon-16.png',
-  'icons/favicon-32.png',
   'icons/apple-touch-icon.png',
   'icons/icon-192.png',
   'icons/icon-512.png',
