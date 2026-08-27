@@ -34,7 +34,7 @@ jobs:
           node-version: "22"
 
       - name: Verify the scoring engine before publishing
-        run: node --test web/scoring.test.js web/sw.test.js
+        run: node --test web/scoring.test.js web/match.test.js web/sw.test.js
 
       - name: Assemble site
         run: |

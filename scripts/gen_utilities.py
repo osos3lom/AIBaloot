@@ -1,8 +1,13 @@
 """Generate the player app's self-hosted utility layer.
 
-Emits exactly the utilities web/index.html and web/app.js use, so the page can
-drop the Tailwind CDN and still render correctly offline. Selectors are escaped
-programmatically because hand-escaping `.bg-[#062b21]/85` is a typo farm.
+SUPERSEDED. This was the one-shot migration that let web/index.html drop the Tailwind
+CDN. The page has since been rebuilt on a semantic component stylesheet and no longer
+carries Tailwind-shaped class names, so re-running this would inject a layer nothing
+uses. Kept only as the record of how the CDN was removed.
+
+Emits exactly the utilities web/index.html and web/app.js used at the time, so the page
+could render correctly offline. Selectors are escaped programmatically because
+hand-escaping `.bg-[#062b21]/85` is a typo farm.
 """
 
 import re

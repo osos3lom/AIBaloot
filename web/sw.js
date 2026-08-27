@@ -12,7 +12,7 @@
  * Bump CACHE_VERSION on release; `activate` deletes every cache that does not match.
  */
 
-var CACHE_VERSION = 'v2';
+var CACHE_VERSION = 'v7';
 var CACHE_NAME = 'hakim-' + CACHE_VERSION;
 
 // Immutable, content-versioned by filename. Precached and served cache-first.
@@ -30,15 +30,26 @@ var APP_ASSETS = [
   './',
   'index.html',
   'manifest.webmanifest',
+  'icons/favicon.ico',
+  'icons/favicon-16.png',
+  'icons/favicon-32.png',
+  'icons/apple-touch-icon.png',
+  'icons/icon-192.png',
+  'icons/icon-512.png',
+  'icons/icon-maskable-512.png',
   'i18n.js',
+  'icons.js',
+  'ui-kit.js',
   'scoring.js',
+  'match.js',
   'detect.js',
   'model-runner.js',
+  'scan-ui.js',
   'app.js'
 ];
 
 function isImmutable(url) {
-  return /\/(runtime|models)\//.test(url.pathname);
+  return /\/(runtime|models|vid)\//.test(url.pathname);
 }
 
 self.addEventListener('install', function (event) {

@@ -1,10 +1,21 @@
 /**
  * Hakim — In-Browser YOLO11 Card Detector with WebGPU and WASM fallback.
  *
- * Preprocessing: Stretch resize to 416x416 (no letterboxing).
- * Output decoding: 1x37x3549 tensor (4 bbox coords + 33 classes: 32 Baloot cards + 'other').
+ * Preprocessing: stretch resize to 704x704 (no letterboxing), matching training.
+ * Output decoding: 1x37x10164 tensor (4 bbox coords + 33 classes: 32 Baloot cards + 'other').
  * Coordinates are un-stretched back to original image dimensions.
  * Class 'other' is mapped to `card: null` (rendered in UI as '؟').
+ *
+ * Two preprocessing paths share one resize:
+ *
+ * - On WebGPU the resized frame is uploaded straight into a GPU texture and a compute
+ *   shader writes planar normalised RGB into a storage buffer that becomes the input
+ *   tensor. Nothing crosses back to the CPU, which is the entire point of the backend.
+ * - Everywhere else the frame is read back once and converted in a tight loop.
+ *
+ * Both paths allocate their canvas, buffers, and tensor once and reuse them for every
+ * frame. The previous version allocated a canvas and a ~6 MB Float32Array per detection,
+ * which on a phone cost more than the inference it was feeding.
  */
 
 var HakimModelRunner = (function () {
@@ -37,8 +48,50 @@ var HakimModelRunner = (function () {
     loaded: false,
     lastLatencyMs: 0,
     error: null,
-    loadPromise: null
+    loadPromise: null,
+    preprocess: 'cpu' // 'gpu' | 'cpu'
   };
+
+  // One scratch canvas for the stretch resize, reused across frames.
+  // `willReadFrequently` is set only for the CPU path: it hints at a software-backed
+  // canvas, which speeds up getImageData but slows the GPU texture upload.
+  var scratch = { canvas: null, ctx: null, size: 0, readback: null };
+
+  // CPU path: the tensor wraps this array, and ORT copies out of it on every run,
+  // so both survive from frame to frame.
+  var cpuTensor = { data: null, tensor: null, size: 0 };
+
+  // GPU path: texture, storage buffer, and the tensor viewing that buffer.
+  // `status` is 'unknown' until first use, then 'ready' or 'unavailable' (sticky).
+  var gpu = {
+    device: null,
+    pipeline: null,
+    texture: null,
+    buffer: null,
+    bindGroup: null,
+    tensor: null,
+    size: 0,
+    status: 'unknown'
+  };
+
+  // Reads the resized frame and writes planar float RGB: the NCHW layout YOLO expects.
+  // rgba8unorm texels arrive already in [0, 1], so no division is needed.
+  var PREPROCESS_WGSL = [
+    '@group(0) @binding(0) var src : texture_2d<f32>;',
+    '@group(0) @binding(1) var<storage, read_write> dst : array<f32>;',
+    '',
+    '@compute @workgroup_size(8, 8, 1)',
+    'fn main(@builtin(global_invocation_id) gid : vec3<u32>) {',
+    '  let dims = textureDimensions(src);',
+    '  if (gid.x >= dims.x || gid.y >= dims.y) { return; }',
+    '  let texel = textureLoad(src, vec2<i32>(i32(gid.x), i32(gid.y)), 0);',
+    '  let plane = dims.x * dims.y;',
+    '  let idx = gid.y * dims.x + gid.x;',
+    '  dst[idx] = texel.r;',
+    '  dst[plane + idx] = texel.g;',
+    '  dst[plane * 2u + idx] = texel.b;',
+    '}'
+  ].join('\n');
 
   /** Dynamically load the self-hosted onnxruntime script if not present. */
   function loadScript(src) {
@@ -169,14 +222,17 @@ var HakimModelRunner = (function () {
     });
   }
 
+  /**
+   * Compile WebGPU shaders and allocate every reusable buffer before the first real
+   * frame, so the opening detection is not the one that pays for all of it.
+   */
   function warmupSession(session) {
     try {
-      var currentImgsz = state.imgsz || DEFAULT_IMGSZ;
-      var dummyData = new Float32Array(3 * currentImgsz * currentImgsz);
-      var dummyTensor = new ort.Tensor('float32', dummyData, [1, 3, currentImgsz, currentImgsz]);
-      var inputName = session.inputNames[0] || 'images';
+      var blank = document.createElement('canvas');
+      blank.width = 8;
+      blank.height = 8;
       var feeds = {};
-      feeds[inputName] = dummyTensor;
+      feeds[session.inputNames[0] || 'images'] = preprocess(blank);
       return session.run(feeds).then(function () {});
     } catch (e) {
       return Promise.resolve();
@@ -184,29 +240,165 @@ var HakimModelRunner = (function () {
   }
 
   /**
-   * Preprocess source canvas/image to Float32 tensor (RGB, normalized [0, 1]).
+   * Allocate (or resize) the shared scratch canvas used for the stretch resize.
+   *
+   * Deliberately a detached <canvas> rather than an OffscreenCanvas: the two draw
+   * identically, but OffscreenCanvas.getImageData measured ~3x slower in Chrome, which
+   * would penalise exactly the CPU path that can least afford it. `alpha: false` skips
+   * the premultiply round-trip and is pixel-identical here for opaque photos.
    */
-  function preprocess(source) {
-    var currentImgsz = state.imgsz || DEFAULT_IMGSZ;
-    var offscreen = document.createElement('canvas');
-    offscreen.width = currentImgsz;
-    offscreen.height = currentImgsz;
-    var ctx = offscreen.getContext('2d', { willReadFrequently: true });
-    
-    // Stretch resize (aspect ratio not preserved)
-    ctx.drawImage(source, 0, 0, currentImgsz, currentImgsz);
-    var imageData = ctx.getImageData(0, 0, currentImgsz, currentImgsz);
-    var data = imageData.data;
-    var floatData = new Float32Array(3 * currentImgsz * currentImgsz);
-    var numPixels = currentImgsz * currentImgsz;
+  function ensureScratch(size, readback) {
+    if (scratch.canvas && scratch.size === size && scratch.readback === readback) {
+      return;
+    }
+    var canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    scratch.canvas = canvas;
+    scratch.ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: readback });
+    scratch.size = size;
+    scratch.readback = readback;
+  }
 
-    for (var i = 0; i < numPixels; i++) {
-      floatData[i] = data[i * 4] / 255.0;                   // R
-      floatData[numPixels + i] = data[i * 4 + 1] / 255.0;   // G
-      floatData[2 * numPixels + i] = data[i * 4 + 2] / 255.0; // B
+  function releaseGpuBuffers() {
+    // The pipeline is size-independent, so it is deliberately kept.
+    if (gpu.texture) { try { gpu.texture.destroy(); } catch (e) { /* already gone */ } }
+    if (gpu.buffer) { try { gpu.buffer.destroy(); } catch (e) { /* already gone */ } }
+    gpu.texture = null;
+    gpu.buffer = null;
+    gpu.bindGroup = null;
+    gpu.tensor = null;
+  }
+
+  /**
+   * Build the compute pipeline and its buffers on the device ORT is already using.
+   * Returns false - permanently - if anything is missing, so the CPU path takes over
+   * without retrying the same failure on every frame.
+   */
+  function ensureGpuPipeline(size) {
+    if (gpu.status === 'unavailable') return false;
+    if (gpu.status === 'ready' && gpu.size === size) return true;
+
+    try {
+      var device = ort.env && ort.env.webgpu && ort.env.webgpu.device;
+      if (!device || typeof ort.Tensor.fromGpuBuffer !== 'function') {
+        gpu.status = 'unavailable';
+        return false;
+      }
+
+      releaseGpuBuffers();
+      gpu.device = device;
+
+      if (!gpu.pipeline) {
+        gpu.pipeline = device.createComputePipeline({
+          layout: 'auto',
+          compute: {
+            module: device.createShaderModule({ code: PREPROCESS_WGSL }),
+            entryPoint: 'main'
+          }
+        });
+      }
+
+      // RENDER_ATTACHMENT is required by copyExternalImageToTexture.
+      gpu.texture = device.createTexture({
+        size: [size, size, 1],
+        format: 'rgba8unorm',
+        usage: GPUTextureUsage.TEXTURE_BINDING |
+               GPUTextureUsage.COPY_DST |
+               GPUTextureUsage.RENDER_ATTACHMENT
+      });
+
+      gpu.buffer = device.createBuffer({
+        size: 3 * size * size * 4,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+      });
+
+      gpu.bindGroup = device.createBindGroup({
+        layout: gpu.pipeline.getBindGroupLayout(0),
+        entries: [
+          { binding: 0, resource: gpu.texture.createView() },
+          { binding: 1, resource: { buffer: gpu.buffer } }
+        ]
+      });
+
+      gpu.tensor = ort.Tensor.fromGpuBuffer(gpu.buffer, {
+        dataType: 'float32',
+        dims: [1, 3, size, size]
+      });
+
+      gpu.size = size;
+      gpu.status = 'ready';
+      return true;
+    } catch (error) {
+      console.warn('WebGPU preprocessing unavailable, falling back to CPU:', error);
+      gpu.status = 'unavailable';
+      releaseGpuBuffers();
+      return false;
+    }
+  }
+
+  /** Upload the resized frame and run the conversion shader. Never touches the CPU. */
+  function preprocessOnGpu(size) {
+    var device = gpu.device;
+
+    device.queue.copyExternalImageToTexture(
+      { source: scratch.canvas, flipY: false },
+      { texture: gpu.texture, premultipliedAlpha: false },
+      [size, size, 1]
+    );
+
+    var encoder = device.createCommandEncoder();
+    var pass = encoder.beginComputePass();
+    pass.setPipeline(gpu.pipeline);
+    pass.setBindGroup(0, gpu.bindGroup);
+    var groups = Math.ceil(size / 8);
+    pass.dispatchWorkgroups(groups, groups, 1);
+    pass.end();
+    device.queue.submit([encoder.finish()]);
+
+    // Queued work is ordered, so ORT's own submission sees the finished buffer.
+    return gpu.tensor;
+  }
+
+  /** Read the resized frame back once and interleave it into planar RGB. */
+  function preprocessOnCpu(size) {
+    var pixels = size * size;
+
+    if (!cpuTensor.data || cpuTensor.size !== size) {
+      cpuTensor.data = new Float32Array(3 * pixels);
+      cpuTensor.tensor = new ort.Tensor('float32', cpuTensor.data, [1, 3, size, size]);
+      cpuTensor.size = size;
     }
 
-    return new ort.Tensor('float32', floatData, [1, 3, currentImgsz, currentImgsz]);
+    var rgba = scratch.ctx.getImageData(0, 0, size, size).data;
+    var out = cpuTensor.data;
+    var greenPlane = pixels;
+    var bluePlane = pixels * 2;
+
+    // `read` walks the RGBA source by stride so the loop body has no multiplications.
+    for (var i = 0, read = 0; i < pixels; i++, read += 4) {
+      out[i] = rgba[read] / 255;
+      out[greenPlane + i] = rgba[read + 1] / 255;
+      out[bluePlane + i] = rgba[read + 2] / 255;
+    }
+
+    return cpuTensor.tensor;
+  }
+
+  /**
+   * Resize the source to the model's input square and hand back an input tensor.
+   * The returned tensor is shared across calls - consume it before the next frame.
+   */
+  function preprocess(source) {
+    var size = state.imgsz || DEFAULT_IMGSZ;
+    var useGpu = state.backend === 'webgpu' && ensureGpuPipeline(size);
+    state.preprocess = useGpu ? 'gpu' : 'cpu';
+
+    ensureScratch(size, !useGpu);
+    // Stretch resize: the aspect ratio is deliberately not preserved, matching training.
+    scratch.ctx.drawImage(source, 0, 0, size, size);
+
+    return useGpu ? preprocessOnGpu(size) : preprocessOnCpu(size);
   }
 
   /**
@@ -323,6 +515,7 @@ var HakimModelRunner = (function () {
           labelled: true,
           elapsedMs: elapsedMs,
           backend: state.backend,
+          preprocess: state.preprocess,
           modelVariant: state.modelVariant
         };
       });
@@ -342,6 +535,7 @@ var HakimModelRunner = (function () {
         loaded: state.loaded,
         loading: state.loading,
         backend: state.backend,
+        preprocess: state.preprocess,
         modelVariant: state.modelVariant,
         lastLatencyMs: state.lastLatencyMs,
         error: state.error ? state.error.message : null

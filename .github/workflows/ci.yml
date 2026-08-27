@@ -78,7 +78,7 @@ jobs:
         with:
           node-version: "22"
       - name: Scoring engine tests
-        run: node --test web/scoring.test.js web/sw.test.js
+        run: node --test web/scoring.test.js web/match.test.js web/sw.test.js
       - name: Syntax-check every browser script
         run: for file in web/*.js; do node --check "$file"; done
 

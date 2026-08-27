@@ -140,3 +140,26 @@ test('an empty hand scores zero without throwing', () => {
   assert.equal(result.share, 0);
   assert.deepEqual(result.projects, []);
 });
+
+test('project combinations correctly calculate for sun and hokum', () => {
+  // Sra (20) in Sun
+  const sraHand = scoring.scoreHand(['Ah', 'Kh', 'Qh', '8c', '7d'], { mode: 'sun' });
+  assert.equal(sraHand.projectPoints, 20);
+
+  // Fifty (50) in Hokum
+  const fiftyHand = scoring.scoreHand(['Ah', 'Kh', 'Qh', 'Jh', '7d'], { mode: 'hokum', trump: 's' });
+  assert.equal(fiftyHand.projectPoints, 50);
+
+  // Hundred (100) in Sun
+  const hundredHand = scoring.scoreHand(['Ah', 'Kh', 'Qh', 'Jh', '10h'], { mode: 'sun' });
+  assert.equal(hundredHand.projectPoints, 100);
+
+  // 400 (4 Aces) in Sun
+  const fourHundredHand = scoring.scoreHand(['Ah', 'Ad', 'Ac', 'As'], { mode: 'sun' });
+  assert.equal(fourHundredHand.projectPoints, 400);
+
+  // Baloot (K + Q of trump) in Hokum
+  const balootHand = scoring.scoreHand(['Kh', 'Qh', '8s'], { mode: 'hokum', trump: 'h' });
+  assert.equal(balootHand.projectPoints, 20);
+});
+
