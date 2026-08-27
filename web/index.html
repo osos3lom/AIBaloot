@@ -11,14 +11,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
   <!--
-    Installed-app behaviour. The status bar style is "default" rather than the
-    "black-translucent" a full-bleed video app would use: this app is warm
-    ivory, and black-translucent paints white status-bar glyphs over it, which
-    on this background is invisible. "default" keeps them dark and legible.
+    Installed-app behaviour.
+
+    "black-translucent" is what makes this app reach the physical top edge: the
+    web view is laid out behind the status bar instead of starting below it, so
+    the stage video runs all the way up rather than leaving a band of page
+    background above it.
+
+    The cost is that iOS then always draws its status-bar glyphs white, over
+    whatever the page puts there — and this page puts warm paper and two bright
+    clips there. `.status-scrim` exists to pay that cost; see its rule.
   -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="حكيم">
   <meta name="theme-color" content="#f2efe7">
   <title>حكيم | حاسبة نقاط البلوت</title>
@@ -197,6 +203,37 @@
       inset-inline-start: 12px; top: 12px; z-index: 90;
       padding: 10px 16px; border-radius: var(--radius-sm);
       background: var(--ink); color: var(--paper);
+    }
+
+    /*
+     * Status-bar backing.
+     *
+     * With black-translucent the page owns the strip behind the clock and the
+     * battery, and iOS draws those glyphs white with no way to ask for dark
+     * ones. Both clips are bright at the top and the other two tabs are warm
+     * paper, so white-on-white is the default outcome without this.
+     *
+     * A gradient rather than a bar: it is opaque enough at the very top to seat
+     * the glyphs and gone by the time it reaches the header, so it reads as
+     * depth rather than as the band it replaced. Its height tracks the inset,
+     * so on a device that reports none it collapses to nothing.
+     */
+    .status-scrim {
+      position: fixed;
+      top: 0;
+      inset-inline: 0;
+      height: calc(env(safe-area-inset-top, 0px) + 10px);
+      z-index: 45;
+      pointer-events: none;
+      background: linear-gradient(
+        180deg,
+        rgba(26, 24, 20, 0.44) 0%,
+        rgba(26, 24, 20, 0.26) 55%,
+        rgba(26, 24, 20, 0) 100%);
+    }
+    /* Nothing to seat when there is no inset to sit in. */
+    @supports not (height: env(safe-area-inset-top)) {
+      .status-scrim { display: none; }
     }
 
     /* ---- Home stage video ---------------------------------------------
@@ -1930,6 +1967,9 @@
   <!-- Anchored to the viewport, behind everything: see .ambient. -->
   <div class="ambient" aria-hidden="true"></div>
 
+  <!-- Seats the white iOS status-bar glyphs; see .status-scrim. -->
+  <div class="status-scrim" aria-hidden="true"></div>
+
   <!--
     The home stage. Purely atmospheric, so it is aria-hidden and untabbable, and
     it carries no `src` in the markup — app.js decides whether this device
@@ -2057,9 +2097,8 @@
 
         <button id="btn-calculate" type="button" class="calc-btn"
                 data-i18n-aria-label="aria_calculate" data-i18n-title="aria_calculate"
-                aria-label="احسب واعتمد الجولة">
-          <span data-icon="calculator" data-icon-size="28"></span>
-          <span class="calc-btn__label" data-i18n="btn_calculate">احسب</span>
+                aria-label="حاسبة نقاط الجولة">
+          <span data-icon="calculator" data-icon-size="38"></span>
         </button>
 
         <span class="action-side">

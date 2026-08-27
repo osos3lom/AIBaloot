@@ -374,8 +374,30 @@
 
     buildKeypad();
     renderCalculator();
-    HakimUI.open('sheet-keypad', el['btn-calc-commit']);
+    focusActiveTeamInput();
     render();
+  }
+
+  /**
+   * Open the calculator with the caret already in the active team's field.
+   *
+   * The player tapped a score to type a number, so making them tap a second
+   * time to reach the field is a step that earns nothing. Selecting the seeded
+   * value rather than just focusing it means the first digit replaces it
+   * instead of landing next to it.
+   *
+   * This runs inside the tap that opened the sheet, which is what lets iOS
+   * raise the keyboard — a focus call outside a user gesture would be ignored.
+   */
+  function focusActiveTeamInput() {
+    var input = el['calc-input-' + state.calc.activeTeam];
+    HakimUI.open('sheet-keypad', input || el['btn-calc-commit']);
+    if (!input) return;
+    try {
+      input.select();
+    } catch (err) {
+      /* number inputs refuse select() in some engines; focus alone is enough */
+    }
   }
 
   function commitKeypad(event) {
@@ -638,28 +660,10 @@
     state.pending = { us: null, them: null };
   }
 
-  /** The احسب button: commit whatever is pending as one round. */
+  /** The calculator button on table: open score entry modal. */
   function calculate() {
-    if (!hasPending()) {
-      HakimUI.toast(t('toast_empty_round'));
-      HakimUI.buzz([10, 40, 10]);
-      return;
-    }
-
-    var button = el['btn-calculate'];
-    button.classList.add('is-firing');
-    setTimeout(function () { button.classList.remove('is-firing'); }, 440);
-    HakimUI.buzz([12, 30, 18]);
-
-    var round = HakimMatch.addRound({
-      us: state.pending.us || 0,
-      them: state.pending.them || 0,
-      source: 'manual'
-    });
-
-    clearPending();
-    if (round) HakimUI.toast(t('toast_round_added'));
-    render();
+    HakimUI.buzz(6);
+    openKeypad('us');
   }
 
   function undoRound() {
@@ -748,7 +752,11 @@
     $('name-' + team).textContent = teamName(team);
     card.setAttribute('aria-label', t('aria_points_for', { team: teamName(team) }));
     card.setAttribute('data-leading', String(isLeading));
-    card.setAttribute('data-active', String(state.keypad.team === team));
+    // Highlight the card the round calculator is currently entering points for,
+    // and only while that sheet is actually open.
+    card.setAttribute('data-active', String(
+      HakimUI.isOpen('sheet-keypad') && state.calc.activeTeam === team
+    ));
 
     if (state.painted[team] !== total) {
       HakimUI.animateNumber(value, state.painted[team], total);

@@ -12,7 +12,7 @@
  * Bump CACHE_VERSION on release; `activate` deletes every cache that does not match.
  */
 
-var CACHE_VERSION = 'v7';
+var CACHE_VERSION = 'v8';
 var CACHE_NAME = 'hakim-' + CACHE_VERSION;
 
 // Immutable, content-versioned by filename. Precached and served cache-first.
