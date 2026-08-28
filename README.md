@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/hakim_logo.png" alt="Hakim Baloot AI Logo" width="160" style="border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
+<img src="web/icons/icon-512.png" alt="Hakim Baloot AI Logo" width="160" style="border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
 
 # 🃏 hakim-vision | استوديو حكيم للرؤية الحاسوبية
 ### منظومة الذكاء الاصطناعي والرؤية الحاسوبية لحساب وتقييم أوراق البلوت السعودي
