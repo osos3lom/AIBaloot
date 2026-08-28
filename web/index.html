@@ -216,18 +216,22 @@
      * the screen. An unset root there is white, which is the one colour this
      * app never uses.
      */
-    html {
-      -webkit-text-size-adjust: 100%;
+    html,
+    body {
+      width: 100vw;
+      height: 100vh;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
       background: var(--paper);
     }
 
     body {
       font-family: 'Tajawal', system-ui, -apple-system, 'Segoe UI', sans-serif;
       color: var(--ink);
-      background: var(--paper);
-      min-height: 100vh;
-      min-height: 100svh;
       overscroll-behavior-y: none;
+      -webkit-text-size-adjust: 100%;
     }
 
     /* ---- The chin-gap note ---------------------------------------------
@@ -347,19 +351,30 @@
     /* Paints above .ambient purely by DOM order — both sit on the same layer. */
     .stage {
       position: fixed;
-      inset: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100vw;
+      height: 100vh;
+      min-height: 100vh;
       /* Down to the physical bottom edge; see the chin-gap note. */
       bottom: calc(-1 * var(--chin-bleed));
       z-index: -1;
       pointer-events: none;
+      overflow: hidden;
     }
 
     .stage__video {
       position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      min-height: 100vh;
       object-fit: cover;
+      display: block;
+      pointer-events: none;
       opacity: 0;
       transition: opacity var(--slow) var(--ease);
       /* Nothing is laid over the footage any more — the glass panels do the
@@ -408,7 +423,6 @@
       width: min(100%, 460px);
       margin-inline: auto;
       min-height: 100vh;
-      min-height: 100svh;
       padding-top: max(14px, env(safe-area-inset-top, 0px));
       /* Physical left/right on purpose: the insets describe the hardware, not
          the writing direction, so `inline-start` would put the left inset on
@@ -426,7 +440,6 @@
       .frame {
         margin-block: 26px;
         min-height: min(880px, calc(100vh - 52px));
-        min-height: min(880px, calc(100svh - 52px));
         border-radius: 42px;
         /* Glass here too, so the stage reads through the phone rather than
            being boxed out by an opaque card sitting on top of it. */
@@ -1173,7 +1186,6 @@
       position: relative;
       width: min(100%, 460px);
       max-height: 88vh;
-      max-height: 88svh;
       overflow-y: auto;
       /* Momentum scrolling on older iOS, and no scroll chaining to the page
          behind the sheet once the panel hits its end. */
