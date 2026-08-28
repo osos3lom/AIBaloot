@@ -47,7 +47,7 @@ test('routes versioned runtime and model blobs to the cache-first branch', () =>
   for (const p of [
     '/runtime/ort.webgpu.min.js',
     '/runtime/ort-wasm-simd-threaded.jsep.wasm',
-    '/models/baloot-v1.int8.onnx',
+    '/models/baloot-fan-v2.int8.onnx',
     '/AIBaloot/models/model.json'
   ]) {
     assert.strictEqual(context.isImmutable(new URL('https://x' + p)), true, p);
@@ -70,8 +70,8 @@ test('precaches every asset the two runtime paths actually fetch', () => {
     'runtime/ort.webgpu.min.js',
     'runtime/ort-wasm-simd-threaded.jsep.mjs',
     'runtime/ort-wasm-simd-threaded.jsep.wasm',
-    'models/baloot-v1.fp16.onnx',
-    'models/baloot-v1.int8.onnx'
+    'models/baloot-fan-v2.fp16.onnx',
+    'models/baloot-fan-v2.int8.onnx'
   ]) {
     assert.ok(all.includes(required), 'missing from precache list: ' + required);
   }

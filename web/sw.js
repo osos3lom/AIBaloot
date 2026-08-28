@@ -12,7 +12,7 @@
  * Bump CACHE_VERSION on release; `activate` deletes every cache that does not match.
  */
 
-var CACHE_VERSION = 'v12';
+var CACHE_VERSION = 'v13';
 var CACHE_NAME = 'hakim-' + CACHE_VERSION;
 
 // Immutable, content-versioned by filename. Precached and served cache-first.
@@ -21,8 +21,8 @@ var IMMUTABLE_ASSETS = [
   'runtime/ort-wasm-simd-threaded.jsep.mjs',
   'runtime/ort-wasm-simd-threaded.jsep.wasm',
   'models/model.json',
-  'models/baloot-v1.fp16.onnx',
-  'models/baloot-v1.int8.onnx'
+  'models/baloot-fan-v2.fp16.onnx',
+  'models/baloot-fan-v2.int8.onnx'
 ];
 
 // Changes on every deploy. Precached for offline use, but served network-first.

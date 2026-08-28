@@ -172,7 +172,7 @@ var HakimModelRunner = (function () {
 
         // Try WebGPU first if supported
         if (hasWebGPU) {
-          return tryLoadSession('webgpu', './models/baloot-v1.fp16.onnx', 'fp16')
+          return tryLoadSession('webgpu', './models/baloot-fan-v2.fp16.onnx', 'fp16')
             .catch(function (webgpuError) {
               console.warn('WebGPU init failed, falling back to WASM:', webgpuError);
               return tryLoadWasm();
@@ -206,9 +206,9 @@ var HakimModelRunner = (function () {
 
   function tryLoadWasm() {
     // Prefer int8 on WASM if available, fallback to fp16
-    return tryLoadSession('wasm', './models/baloot-v1.int8.onnx', 'int8')
+    return tryLoadSession('wasm', './models/baloot-fan-v2.int8.onnx', 'int8')
       .catch(function () {
-        return tryLoadSession('wasm', './models/baloot-v1.fp16.onnx', 'fp16');
+        return tryLoadSession('wasm', './models/baloot-fan-v2.fp16.onnx', 'fp16');
       });
   }
 

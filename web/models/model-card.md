@@ -1,11 +1,11 @@
-# Baloot Card Detector Model Card (v1.1.0 - 704px High Resolution)
+# Baloot Card Detector Model Card (v2.0.0 - baloot-fan-v2 704px Dense Fanned Hand Detector)
 
 ## Model Summary
 
 - **Model Architecture**: YOLO11n (Ultralytics)
-- **Task**: Object detection for 32 Saudi Baloot playing cards + 1 `other` class (ranks 2–6)
-- **Input Resolution**: 704 × 704 px (Stretch resized, 2.86× higher pixel density than 416px)
-- **Export Format**: ONNX (opset 17, simplified, no embedded NMS)
+- **Task**: Object detection for 32 Saudi Baloot playing cards + 1 `other` class (ranks 2–6) on dense fanned hands
+- **Input Resolution**: 704 × 704 px (Stretch resized)
+- **Export Format**: ONNX (opset 17, simplified, FP16 & INT8 static quantization)
 - **Runtime Targets**: WebGPU (FP16) on iOS Safari & modern browsers; WASM (INT8/FP16) fallback
 
 ---
@@ -14,17 +14,16 @@
 
 | Format | File | Size | Primary Target | Expected Latency |
 | :--- | :--- | :--- | :--- | :--- |
-| **FP16 ONNX** | `web/models/baloot-v1.fp16.onnx` | 5.1 MB | WebGPU (iOS / Desktop) | ~20–40 ms |
-| **INT8 ONNX** | `web/models/baloot-v1.int8.onnx` | 3.16 MB | WASM (CPU fallback) | ~110–220 ms |
-| **PyTorch** | `runs/detect/runs/hakim/baloot/weights/best.pt` | 5.2 MB | Native Training / Evaluation | — |
+| **FP16 ONNX** | `web/models/baloot-fan-v2.fp16.onnx` | 5.1 MB | WebGPU (iOS / Desktop) | ~20–40 ms |
+| **INT8 ONNX** | `web/models/baloot-fan-v2.int8.onnx` | 3.16 MB | WASM (CPU fallback) | ~110–220 ms |
+| **PyTorch** | `runs/detect/data/fan-training/runs/baloot-fan-v2/weights/best.pt` | 5.3 MB | Native Training / Evaluation | — |
 
 ### Evaluation Metrics (Holdout Validation Set at 704×704)
 
-- **Precision (B)**: 99.97%
-- **Recall (B)**: 100.0%
-- **mAP@50 (B)**: 99.50%
-- **mAP@50-95 (B)**: 83.25%
-- **Per-Class Average**: >99.5% AP across all 32 Baloot cards and `other`
+- **Precision**: 98.26%
+- **Recall**: 94.04%
+- **mAP@50**: 98.72%
+- **mAP@50-95**: 95.81%
 
 ### First-Load Payload (gzip, as served by GitHub Pages)
 

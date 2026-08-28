@@ -55,6 +55,6 @@ def run_smoke_test_photo(
 
 
 if __name__ == "__main__":
-    fp16_model = Path("web/models/baloot-v1.fp16.onnx")
+    fp16_model = Path("web/models/baloot-fan-v2.fp16.onnx")
     for photo in Path("data/test-photos").glob("*.jpg"):
         run_smoke_test_photo(fp16_model, photo)
