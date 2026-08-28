@@ -276,13 +276,20 @@
       inset: 0;
       /* Down to physical bottom edge: bleed past safe-area inset or measured chin */
       bottom: calc(-1 * max(env(safe-area-inset-bottom, 0px), var(--chin-bleed)));
-      z-index: -1;
+      z-index: -2;
       pointer-events: none;
+      transition: opacity var(--slow) var(--ease), visibility var(--slow) var(--ease);
       background:
         radial-gradient(circle at 50% -10%, var(--paper-lift) 0 26%, transparent 62%),
         radial-gradient(circle at 12% 88%, rgba(47, 107, 82, 0.05) 0 24%, transparent 60%),
         radial-gradient(circle at 88% 78%, rgba(178, 92, 75, 0.05) 0 24%, transparent 60%),
         var(--paper);
+    }
+
+    body[data-view="home"] .ambient,
+    body[data-view="game"] .ambient {
+      opacity: 0;
+      visibility: hidden;
     }
 
     .hidden { display: none !important; }
@@ -2081,7 +2088,7 @@
     }
   </style>
 </head>
-<body>
+<body data-view="home">
 
   <!-- Anchored to the viewport, behind everything: see .ambient. -->
   <div class="ambient" aria-hidden="true"></div>
@@ -2090,19 +2097,15 @@
   <div class="status-scrim" aria-hidden="true"></div>
 
   <!--
-    The home stage. Purely atmospheric, so it is aria-hidden and untabbable, and
-    it carries no `src` in the markup — app.js decides whether this device
-    should spend 2.5 MB and a decode loop on decoration. Until then (and
-    forever, on a reduced-motion or data-saver device) the poster stands in,
-    which is why the poster is a real frame rather than a black placeholder.
+    The home stage. Purely atmospheric, so it is aria-hidden and untabbable.
   -->
   <div class="stage" aria-hidden="true">
-    <video class="stage__video" data-stage="home" data-src="vid/bgbaloot.mp4"
+    <video class="stage__video" data-stage="home" src="vid/bgbaloot.mp4" data-src="vid/bgbaloot.mp4"
            poster="vid/bgbaloot-poster.jpg"
-           muted loop playsinline preload="none" disablepictureinpicture tabindex="-1"></video>
-    <video class="stage__video" data-stage="game" data-src="vid/vid2-bg.mp4"
+           muted loop playsinline preload="auto" disablepictureinpicture tabindex="-1"></video>
+    <video class="stage__video" data-stage="game" src="vid/vid2-bg.mp4" data-src="vid/vid2-bg.mp4"
            poster="vid/vid2-poster.jpg"
-           muted loop playsinline preload="none" disablepictureinpicture tabindex="-1"></video>
+           muted loop playsinline preload="auto" disablepictureinpicture tabindex="-1"></video>
   </div>
 
   <a href="#view-game" class="skip-link" data-i18n="skip_link">تخطَّ إلى المحتوى</a>
