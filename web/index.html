@@ -26,7 +26,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="حكيم">
-  <meta name="theme-color" content="#f2efe7">
+  <meta name="theme-color" content="#000000">
   <title>حكيم | حاسبة نقاط البلوت</title>
   <meta name="description" content="حاسبة بلوت للجوال: سجّل نقاط لنا ولهم، أو صوّر الورق ويحسب حكيم النقاط داخل جهازك.">
   <!--
@@ -63,12 +63,7 @@
       }
 
       function measure() {
-        /* In a browser tab the shortfall is the browser's own toolbars, and
-           drawing under those is not edge-to-edge, it is hidden content. Only
-           an installed app owns the glass. */
-        if (!installed()) { root.style.setProperty('--chin-bleed', '0px'); return; }
-
-        /* Safari has long reported screen.width/height in the device's native
+        /* Safari reports screen.width/height in the device's native
            orientation and left them there through a rotation, so choose the
            edge by the viewport rather than by the property name. */
         var portrait = window.innerHeight >= window.innerWidth;
@@ -216,22 +211,23 @@
      * the screen. An unset root there is white, which is the one colour this
      * app never uses.
      */
-    html,
-    body {
+    html {
       width: 100vw;
       height: 100vh;
       min-height: 100vh;
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-      background: var(--paper);
+      background: #000000;
+      -webkit-text-size-adjust: 100%;
     }
 
     body {
       font-family: 'Tajawal', system-ui, -apple-system, 'Segoe UI', sans-serif;
       color: var(--ink);
+      background: var(--paper);
+      min-height: 100vh;
       overscroll-behavior-y: none;
-      -webkit-text-size-adjust: 100%;
     }
 
     /* ---- The chin-gap note ---------------------------------------------
@@ -278,8 +274,8 @@
     .ambient {
       position: fixed;
       inset: 0;
-      /* Down to the physical bottom edge; see the chin-gap note. */
-      bottom: calc(-1 * var(--chin-bleed));
+      /* Down to physical bottom edge: bleed past safe-area inset or measured chin */
+      bottom: calc(-1 * max(env(safe-area-inset-bottom, 0px), var(--chin-bleed)));
       z-index: -1;
       pointer-events: none;
       background:
@@ -354,15 +350,15 @@
       top: 0;
       left: 0;
       right: 0;
-      bottom: 0;
       width: 100vw;
-      height: 100vh;
+      height: calc(100vh + max(env(safe-area-inset-bottom, 0px), var(--chin-bleed)));
       min-height: 100vh;
-      /* Down to the physical bottom edge; see the chin-gap note. */
-      bottom: calc(-1 * var(--chin-bleed));
+      /* Down to physical bottom edge: bleed past safe-area inset or measured chin */
+      bottom: calc(-1 * max(env(safe-area-inset-bottom, 0px), var(--chin-bleed)));
       z-index: -1;
       pointer-events: none;
       overflow: hidden;
+      background: #000000;
     }
 
     .stage__video {
@@ -370,7 +366,7 @@
       top: 0;
       left: 0;
       width: 100vw;
-      height: 100vh;
+      height: 100%;
       min-height: 100vh;
       object-fit: cover;
       display: block;
@@ -1167,8 +1163,8 @@
     .sheet {
       position: fixed;
       inset: 0;
-      /* Down to the physical bottom edge; see the chin-gap note. */
-      bottom: calc(-1 * var(--chin-bleed));
+      /* Down to physical bottom edge: bleed past safe-area inset or measured chin */
+      bottom: calc(-1 * max(env(safe-area-inset-bottom, 0px), var(--chin-bleed)));
       z-index: 60;
       display: flex;
       align-items: flex-end;
@@ -1785,8 +1781,8 @@
     .scanner {
       position: fixed;
       inset: 0;
-      /* Down to the physical bottom edge; see the chin-gap note. */
-      bottom: calc(-1 * var(--chin-bleed));
+      /* Down to physical bottom edge: bleed past safe-area inset or measured chin */
+      bottom: calc(-1 * max(env(safe-area-inset-bottom, 0px), var(--chin-bleed)));
       z-index: 70;
       display: flex;
       flex-direction: column;
@@ -2009,8 +2005,8 @@
     .win {
       position: fixed;
       inset: 0;
-      /* Down to the physical bottom edge; see the chin-gap note. */
-      bottom: calc(-1 * var(--chin-bleed));
+      /* Down to physical bottom edge: bleed past safe-area inset or measured chin */
+      bottom: calc(-1 * max(env(safe-area-inset-bottom, 0px), var(--chin-bleed)));
       z-index: 65;
       display: grid;
       place-items: center;
