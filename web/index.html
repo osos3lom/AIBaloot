@@ -287,7 +287,9 @@
     }
 
     body[data-view="home"] .ambient,
-    body[data-view="game"] .ambient {
+    body[data-view="game"] .ambient,
+    body[data-view="history"] .ambient,
+    body[data-view="settings"] .ambient {
       opacity: 0;
       visibility: hidden;
     }
@@ -391,7 +393,9 @@
      * الإعدادات — simply have no video, and fall through to the paper ground.
      */
     body[data-view="home"] .stage__video[data-stage="home"],
-    body[data-view="game"] .stage__video[data-stage="game"] { opacity: 1; }
+    body[data-view="game"] .stage__video[data-stage="game"],
+    body[data-view="history"] .stage__video[data-stage="history"],
+    body[data-view="settings"] .stage__video[data-stage="settings"] { opacity: 1; }
 
 
     /*
@@ -2105,6 +2109,10 @@
            muted loop playsinline preload="auto" disablepictureinpicture tabindex="-1"></video>
     <video class="stage__video" data-stage="game" src="vid/vid2-bg.mp4" data-src="vid/vid2-bg.mp4"
            poster="vid/vid2-poster.jpg"
+           muted loop playsinline preload="auto" disablepictureinpicture tabindex="-1"></video>
+    <video class="stage__video" data-stage="history" src="vid/bgvideo1.mp4" data-src="vid/bgvideo1.mp4"
+           muted loop playsinline preload="auto" disablepictureinpicture tabindex="-1"></video>
+    <video class="stage__video" data-stage="settings" src="vid/bgvideo.mp4" data-src="vid/bgvideo.mp4"
            muted loop playsinline preload="auto" disablepictureinpicture tabindex="-1"></video>
   </div>
 
